@@ -56,36 +56,38 @@ func (d *Database) Transact(f func(tr *Transaction) (interface{}, error)) (ret i
 		return
 	}
 
-	for {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					fdberror, ok := r.(FDBError)
-					if ok {
-						e = fdberror
-					} else {
-						panic(r)
-					}
+	wrapped := func() {
+		defer func() {
+			if r := recover(); r != nil {
+				switch r := r.(type) {
+				case FDBError:
+					e = r
+				default:
+					panic(r)
 				}
-			}()
-
-			ret, e = f(tr)
-
-			if e != nil {
-				return
 			}
-
-			e = tr.Commit().GetWithError()
 		}()
+
+		ret, e = f(tr)
+
+		if e != nil {
+			return
+		}
+
+		e = tr.Commit().GetWithError()
+	}
+
+	for {
+		wrapped()
 
 		/* No error means success! */
 		if e == nil {
 			return
 		}
 
-		fdberr, ok := e.(FDBError)
-		if ok {
-			e = tr.OnError(fdberr).GetWithError()
+		switch ep := e.(type) {
+		case FDBError:
+			e = tr.OnError(ep).GetWithError()
 		}
 
 		/* If OnError returns an error, then it's not
