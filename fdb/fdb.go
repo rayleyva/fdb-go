@@ -50,7 +50,7 @@ func (e FDBError) Error() string {
 func Init() error {
 	var e C.fdb_error_t
 	if e = C.fdb_select_api_version_impl(100, 100); e != 0 {
-		return fmt.Errorf("FoundationDB API error")
+		return fmt.Errorf("FoundationDB API error (requested API 100)")
 	}
 	if e = C.fdb_setup_network(); e != 0 {
 		return FDBError{Code: e}
