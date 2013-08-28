@@ -86,7 +86,7 @@ func (v *FutureValue) GetWithError() ([]byte, error) {
 	var length C.int
 	if err := C.fdb_future_get_value(v.f, &present, &value, &length); err != 0 {
 		if err != 2017 {
-			return nil, FDBError{Code: err}
+			return nil, Error{Code: err}
 		}
 	}
 	if present != 0 {
@@ -124,7 +124,7 @@ func (k *FutureKey) GetWithError() ([]byte, error) {
 	var length C.int
 	if err := C.fdb_future_get_key(k.f, &value, &length); err != 0 {
 		if err != 2017 {
-			return nil, FDBError{Code: err}
+			return nil, Error{Code: err}
 		}
 	}
 	k.k = C.GoBytes(unsafe.Pointer(value), length)
@@ -157,7 +157,7 @@ func (f *FutureNil) destroy() {
 func (f *FutureNil) GetWithError() error {
 	fdb_future_block_until_ready(f.f)
 	if err := C.fdb_future_get_error(f.f); err != 0 {
-		return FDBError{Code: err}
+		return Error{Code: err}
 	}
 	return nil
 }

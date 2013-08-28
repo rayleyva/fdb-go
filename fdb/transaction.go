@@ -32,6 +32,11 @@ import (
 	"runtime"
 )
 
+type ReadTransaction interface {
+	Get(key []byte) *FutureValue
+	GetKey(sel KeySelector) *FutureKey
+}
+
 type Transaction struct {
 	t *C.FDBTransaction
 }
@@ -40,7 +45,11 @@ func (t *Transaction) destroy() {
 	C.fdb_transaction_destroy(t.t)
 }
 
-func (t *Transaction) OnError(e FDBError) *FutureNil {
+func (t *Transaction) Snapshot() *Snapshot {
+	return &Snapshot{t}
+}
+
+func (t *Transaction) OnError(e Error) *FutureNil {
 	return makeFutureNil(C.fdb_transaction_on_error(t.t, e.Code))
 }
 
@@ -52,10 +61,14 @@ func (t *Transaction) Watch(key []byte) *FutureNil {
 	return makeFutureNil(C.fdb_transaction_watch(t.t, (*C.uint8_t)(unsafe.Pointer(&key[0])), C.int(len(key))))
 }
 
-func (t *Transaction) Get(key []byte) *FutureValue {
-	v := &FutureValue{future: future{f: C.fdb_transaction_get(t.t, (*C.uint8_t)(unsafe.Pointer(&key[0])), C.int(len(key)), 0)}}
+func (t *Transaction) get(key []byte, snapshot int) *FutureValue {
+	v := &FutureValue{future: future{f: C.fdb_transaction_get(t.t, (*C.uint8_t)(unsafe.Pointer(&key[0])), C.int(len(key)), C.fdb_bool_t(snapshot))}}
 	runtime.SetFinalizer(v, (*FutureValue).destroy)
 	return v
+}
+
+func (t *Transaction) Get(key []byte) *FutureValue {
+	return t.get(key, 0)
 }
 
 func (t *Transaction) Set(key []byte, value []byte) {
@@ -73,7 +86,7 @@ func (t *Transaction) ClearRange(begin []byte, end []byte) {
 func (t *Transaction) GetCommittedVersion() (int64, error) {
 	var version C.int64_t
 	if err := C.fdb_transaction_get_committed_version(t.t, &version); err != 0 {
-		return 0, FDBError{Code: err}
+		return 0, Error{Code: err}
 	}
 	return int64(version), nil
 }
@@ -90,8 +103,24 @@ func boolToInt(b bool) int {
 	}
 }
 
-func (t *Transaction) GetKey(sel KeySelector) *FutureKey {
-	k := &FutureKey{future: future{f: C.fdb_transaction_get_key(t.t, (*C.uint8_t)(unsafe.Pointer(&sel.Key[0])), C.int(len(sel.Key)), C.fdb_bool_t(boolToInt(sel.OrEqual)), C.int(sel.Offset), 0)}}
+func (t *Transaction) getKey(sel KeySelector, snapshot int) *FutureKey {
+	k := &FutureKey{future: future{f: C.fdb_transaction_get_key(t.t, (*C.uint8_t)(unsafe.Pointer(&sel.Key[0])), C.int(len(sel.Key)), C.fdb_bool_t(boolToInt(sel.OrEqual)), C.int(sel.Offset), C.fdb_bool_t(snapshot))}}
 	runtime.SetFinalizer(k, (*FutureKey).destroy)
 	return k
+}
+
+func (t *Transaction) GetKey(sel KeySelector) *FutureKey {
+	return t.getKey(sel, 0)
+}
+
+type Snapshot struct {
+	t *Transaction
+}
+
+func (s *Snapshot) Get(key []byte) *FutureValue {
+	return s.t.get(key, 1)
+}
+
+func (s *Snapshot) GetKey(sel KeySelector) *FutureKey {
+	return s.t.getKey(sel, 1)
 }

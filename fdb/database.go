@@ -42,7 +42,7 @@ func (d *Database) destroy() {
 func (d *Database) CreateTransaction() (*Transaction, error) {
 	outt := &C.FDBTransaction{}
 	if err := C.fdb_database_create_transaction(d.d, &outt); err != 0 {
-		return nil, FDBError{Code: err}
+		return nil, Error{Code: err}
 	}
 	t := &Transaction{outt}
 	runtime.SetFinalizer(t, (*Transaction).destroy)
@@ -60,7 +60,7 @@ func (d *Database) Transact(f func(tr *Transaction) (interface{}, error)) (ret i
 		defer func() {
 			if r := recover(); r != nil {
 				switch r := r.(type) {
-				case FDBError:
+				case Error:
 					e = r
 				default:
 					panic(r)
@@ -86,7 +86,7 @@ func (d *Database) Transact(f func(tr *Transaction) (interface{}, error)) (ret i
 		}
 
 		switch ep := e.(type) {
-		case FDBError:
+		case Error:
 			e = tr.OnError(ep).GetWithError()
 		}
 

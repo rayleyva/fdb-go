@@ -29,6 +29,8 @@ import "C"
 
 import (
 	"fmt"
+	"runtime"
+	"sync"
 )
 
 /* Would put this in futures.go but for the documented issue with
@@ -39,22 +41,112 @@ func notifyChannel(ch *chan struct{}) {
 	*ch <- struct{}{}
 }
 
-type FDBError struct {
+type Error struct {
 	Code C.fdb_error_t
 }
 
-func (e FDBError) Error() string {
+func (e Error) Error() string {
 	return fmt.Sprintf("%s (%d)", C.GoString(C.fdb_get_error(e.Code)), e.Code)
 }
 
-func Init() error {
-	var e C.fdb_error_t
-	if e = C.fdb_select_api_version_impl(100, 100); e != 0 {
-		return fmt.Errorf("FoundationDB API error (requested API 100)")
+var apiVersion int
+
+type api struct {
+	Options networkOptions
+}
+
+type networkOptions struct {
+}
+
+func APIVersion(ver int) (*api, error) {
+	if apiVersion != 0 {
+		return nil, fmt.Errorf("FoundationDB API already loaded at version %d", apiVersion)
 	}
-	if e = C.fdb_setup_network(); e != 0 {
-		return FDBError{Code: e}
+	if e := C.fdb_select_api_version_impl(C.int(ver), 100); e != 0 {
+		return nil, fmt.Errorf("FoundationDB API error (requested API 100)")
+	}
+	apiVersion = ver
+	return &api{}, nil
+}
+
+var networkStarted bool
+var networkMutex sync.Mutex
+
+func (api *api) startNetwork() error {
+	if e := C.fdb_setup_network(); e != 0 {
+		return Error{Code: e}
 	}
 	go C.fdb_run_network()
+
+	networkStarted = true
+
 	return nil
+}
+
+func (api *api) StartNetwork() error {
+	networkMutex.Lock()
+	defer networkMutex.Unlock()
+
+	return api.startNetwork()
+}
+
+type DBConfig struct {
+	ClusterFile string
+	DBName []byte
+}
+
+func (api *api) Open(conf *DBConfig) (db *Database, e error) {
+	networkMutex.Lock()
+	defer networkMutex.Unlock()
+
+	if !networkStarted {
+		e = api.startNetwork()
+		if e != nil {
+			return
+		}
+	}
+
+	var cf *C.char
+	if conf != nil {
+		cf = C.CString(conf.ClusterFile)
+	}
+	f := C.fdb_create_cluster(cf)
+	fdb_future_block_until_ready(f)
+	outc := &C.FDBCluster{}
+	if err := C.fdb_future_get_cluster(f, &outc); err != 0 {
+		return nil, Error{Code: err}
+	}
+	C.fdb_future_destroy(f)
+	c := &Cluster{c: outc}
+	runtime.SetFinalizer(c, (*Cluster).destroy)
+
+	var dbname []byte
+	if conf == nil {
+		dbname = []byte("DB")
+	} else {
+		dbname = conf.DBName
+	}
+
+	db, e = c.OpenDatabase(dbname)
+
+	return
+}
+
+func (api *api) CreateCluster(cluster string) (*Cluster, error) {
+	var cf *C.char
+
+	if len(cluster) != 0 {
+		cf = C.CString(cluster)
+	}
+
+	f := C.fdb_create_cluster(cf)
+	fdb_future_block_until_ready(f)
+	outc := &C.FDBCluster{}
+	if err := C.fdb_future_get_cluster(f, &outc); err != 0 {
+		return nil, Error{Code: err}
+	}
+	C.fdb_future_destroy(f)
+	c := &Cluster{c: outc}
+	runtime.SetFinalizer(c, (*Cluster).destroy)
+	return c, nil
 }

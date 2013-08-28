@@ -21,16 +21,12 @@ import (
 )
 
 func main() {
-	if err := fdb.Init(); err != nil {
-		log.Fatal(err)
-	}
-
-	cluster, err := fdb.CreateCluster()
+	api, err := fdb.APIVersion(100)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	db, err := cluster.OpenDatabase([]byte("DB"))
+	db, err := api.Open(nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -121,5 +117,18 @@ func main() {
 	}()
 
 	wg.Wait()
+
+	db.Transact(func(tr *fdb.Transaction) (interface{}, error) {
+		fv1 := tr.Get([]byte("gofoo"))
+		fmt.Println("initial gofoo:", string(fv1.GetOrPanic()))
+
+		tr.Set([]byte("gofoo"), []byte("goodbye"))
+
+		fv2 := tr.Get([]byte("gofoo"))
+		fv3 := tr.Snapshot().Get([]byte("gofoo"))
+		fmt.Println("post-set gofoo:", string(fv2.GetOrPanic()), string(fv3.GetOrPanic()))
+
+		return nil, nil
+	})
 }
 ```
