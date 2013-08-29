@@ -22,18 +22,14 @@ func int64ToBytes(i int64) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (opt networkOptions) SetLocalAddress(param string) error {
-	return opt.setOpt(10, []byte(param), len([]byte(param)))
-}
-
-func (opt networkOptions) SetClusterFile(param string) error {
-	return opt.setOpt(20, []byte(param), len([]byte(param)))
-}
-
+// Enables trace output to a file in a directory of the clients choosing
+// Parameter: path to output directory (or NULL for current working directory)
 func (opt networkOptions) SetTraceEnable(param string) error {
 	return opt.setOpt(30, []byte(param), len([]byte(param)))
 }
 
+// Set the size of the client location cache. Raising this value can boost performance in very large databases where clients access data in a near-random pattern. Defaults to 100000.
+// Parameter: Max location cache entries
 func (opt databaseOptions) SetLocationCacheSize(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
@@ -42,6 +38,8 @@ func (opt databaseOptions) SetLocationCacheSize(param int64) error {
 	return opt.setOpt(10, b, 8)
 }
 
+// Set the maximum number of watches allowed to be outstanding on a database connection. Increasing this number could result in increased resource usage. Reducing this number will not cancel any outstanding watches. Defaults to 10000 and cannot be larger than 1000000.
+// Parameter: Max outstanding watches
 func (opt databaseOptions) SetMaxWatches(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
@@ -50,18 +48,24 @@ func (opt databaseOptions) SetMaxWatches(param int64) error {
 	return opt.setOpt(20, b, 8)
 }
 
+// Specify the machine ID that was passed to fdbserver processes running on the same machine as this client, for better location-aware load balancing.
+// Parameter: Hexadecimal ID
 func (opt databaseOptions) SetMachineId(param string) error {
 	return opt.setOpt(21, []byte(param), len([]byte(param)))
 }
 
+// Specify the datacenter ID that was passed to fdbserver processes running in the same datacenter as this client, for better location-aware load balancing.
+// Parameter: Hexadecimal ID
 func (opt databaseOptions) SetDatacenterId(param string) error {
 	return opt.setOpt(22, []byte(param), len([]byte(param)))
 }
 
+// The transaction, if not self-conflicting, may be committed a second time after commit succeeds, in the event of a fault
 func (opt transactionOptions) SetCausalWriteRisky() error {
 	return opt.setOpt(10, nil, 0)
 }
 
+// The read version will be committed, and usually will be the latest committed, but might not be the latest committed in the event of a fault or partition
 func (opt transactionOptions) SetCausalReadRisky() error {
 	return opt.setOpt(20, nil, 0)
 }
@@ -70,6 +74,7 @@ func (opt transactionOptions) SetCausalReadDisable() error {
 	return opt.setOpt(21, nil, 0)
 }
 
+// The next write performed on this transaction will not generate a write conflict range. As a result, other transactions which read the key(s) being modified by the next write will not conflict with this transaction. Care needs to be taken when using this option on a transaction that is shared between multiple threads. When setting this option, write conflict ranges will be disabled on the next write operation, regardless of what thread it is on.
 func (opt transactionOptions) SetNextWriteNoWriteConflictRange() error {
 	return opt.setOpt(30, nil, 0)
 }
@@ -78,10 +83,12 @@ func (opt transactionOptions) SetCheckWritesEnable() error {
 	return opt.setOpt(50, nil, 0)
 }
 
+// Reads performed by a transaction will not see any prior mutations that occured in that transaction, instead seeing the value which was in the database at the transaction's read version. This option may provide a small performance benefit for the client, but also disables a number of client-side optimizations which are beneficial for transactions which tend to read and write the same keys within a single transaction. Also note that with this option invoked any outstanding reads will return errors when transaction commit is called (rather than the normal behavior of commit waiting for outstanding reads to complete).
 func (opt transactionOptions) SetReadYourWritesDisable() error {
 	return opt.setOpt(51, nil, 0)
 }
 
+// Disables read-ahead caching for range reads. Under normal operation, a transaction will read extra rows from the database into cache if range reads are used to page through a series of data one row at a time (i.e. if a range read with a one row limit is followed by another one row range read starting immediately after the result of the first).
 func (opt transactionOptions) SetReadAheadDisable() error {
 	return opt.setOpt(52, nil, 0)
 }
@@ -98,18 +105,22 @@ func (opt transactionOptions) SetDurabilityDevNullIsWebScale() error {
 	return opt.setOpt(130, nil, 0)
 }
 
+// Specifies that this transaction should be treated as highest priority and that lower priority transactions should block behind this one. Use is discouraged outside of low-level tools
 func (opt transactionOptions) SetPrioritySystemImmediate() error {
 	return opt.setOpt(200, nil, 0)
 }
 
+// Specifies that this transaction should be treated as low priority and that default priority transactions should be processed first. Useful for doing batch work simultaneously with latency-sensitive work
 func (opt transactionOptions) SetPriorityBatch() error {
 	return opt.setOpt(201, nil, 0)
 }
 
+// This is a write-only transaction which sets the initial configuration
 func (opt transactionOptions) SetInitializeNewDatabase() error {
 	return opt.setOpt(300, nil, 0)
 }
 
+// Allows this transaction to read and modify system keys (those that start with the byte 0xFF)
 func (opt transactionOptions) SetAccessSystemKeys() error {
 	return opt.setOpt(301, nil, 0)
 }
@@ -118,6 +129,8 @@ func (opt transactionOptions) SetDebugDump() error {
 	return opt.setOpt(400, nil, 0)
 }
 
+// Set a timeout in milliseconds which, when elapsed, will cause the transaction automatically to be cancelled. Valid parameter values are ``[0, INT_MAX]``. If set to 0, will disable all timeouts. All pending and any future uses of the transaction will throw an exception. The transaction can be used again after it is reset.
+// Parameter: value in milliseconds of timeout
 func (opt transactionOptions) SetTimeout(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
@@ -126,6 +139,8 @@ func (opt transactionOptions) SetTimeout(param int64) error {
 	return opt.setOpt(500, b, 8)
 }
 
+// Set a maximum number of retries after which additional calls to onError will throw the most recently seen error code. Valid parameter values are ``[-1, INT_MAX]``. If set to -1, will disable the retry limit.
+// Parameter: number of times to retry
 func (opt transactionOptions) SetRetryLimit(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
@@ -136,33 +151,50 @@ func (opt transactionOptions) SetRetryLimit(param int64) error {
 
 type StreamingMode int
 const (
+	// Client intends to consume the entire range and would like it all transferred as early as possible.
 	StreamingModeWantAll StreamingMode = -2
+	// The default. The client doesn't know how much of the range it is likely to used and wants different performance concerns to be balanced. Only a small portion of data is transferred to the client initially (in order to minimize costs if the client doesn't read the entire range), and as the caller iterates over more items in the range larger batches will be transferred in order to minimize latency.
 	StreamingModeIterator StreamingMode = -1
+	// Infrequently used. The client has passed a specific row limit and wants that many rows delivered in a single batch. Because of iterator operation in client drivers make request batches transparent to the user, consider ``WANT_ALL`` StreamingMode instead. A row limit must be specified if this mode is used.
 	StreamingModeExact StreamingMode = 0
+	// Infrequently used. Transfer data in batches small enough to not be much more expensive than reading individual rows, to minimize cost if iteration stops early.
 	StreamingModeSmall StreamingMode = 1
+	// Infrequently used. Transfer data in batches sized in between small and large.
 	StreamingModeMedium StreamingMode = 2
+	// Infrequently used. Transfer data in batches large enough to be, in a high-concurrency environment, nearly as efficient as possible. If the client stops iteration early, some disk and network bandwidth may be wasted. The batch size may still be too small to allow a single client to get high throughput from the database, so if that is what you need consider the SERIAL StreamingMode.
 	StreamingModeLarge StreamingMode = 3
+	// Transfer data in batches large enough that an individual client can get reasonable read bandwidth from the database. If the client stops iteration early, considerable disk and network bandwidth may be wasted.
 	StreamingModeSerial StreamingMode = 4
 )
 
+// Performs an addition of little-endian integers. If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``. The integers to be added must be stored in a little-endian representation.  They can be signed in two's complement representation or unsigned. You can add to an integer at a known offset in the value by prepending the appropriate number of zero bytes to ``param`` and padding with zero bytes to match the length of the value. However, this offset technique requires that you know the addition will not cause the integer field within the value to overflow.
+// Parameter: addend
 func (t *Transaction) Add(key []byte, param []byte) {
 	t.atomicOp(key, param, 2)
 }
 
+// Performs a bitwise ``and`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
+// Parameter: value with which to perform bitwise and
 func (t *Transaction) And(key []byte, param []byte) {
 	t.atomicOp(key, param, 6)
 }
 
+// Performs a bitwise ``or`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
+// Parameter: value with which to perform bitwise or
 func (t *Transaction) Or(key []byte, param []byte) {
 	t.atomicOp(key, param, 7)
 }
 
+// Performs a bitwise ``xor`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
+// Parameter: value with which to perform bitwise xor
 func (t *Transaction) Xor(key []byte, param []byte) {
 	t.atomicOp(key, param, 8)
 }
 
 type ConflictRangeType int
 const (
+	// Used to add a read conflict range
 	ConflictRangeTypeRead ConflictRangeType = 0
+	// Used to add a write conflict range
 	ConflictRangeTypeWrite ConflictRangeType = 1
 )

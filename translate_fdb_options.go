@@ -85,6 +85,13 @@ func writeOpt(receiver string, opt Option) {
 
 	fmt.Println()
 
+	if opt.Description != "" {
+		fmt.Printf("// %s\n", opt.Description)
+		if opt.ParamDesc != "" {
+			fmt.Printf("// Parameter: %s\n", opt.ParamDesc)
+		}
+	}
+
 	switch opt.ParamType {
 	case "String":
 		writeOptString(receiver, function, opt)
@@ -103,13 +110,18 @@ func translateName(old string) string {
 
 func writeMutation(opt Option) {
 	fmt.Printf(`
+// %s
+// Parameter: %s
 func (t *Transaction) %s(key []byte, param []byte) {
 	t.atomicOp(key, param, %d)
 }
-`, translateName(opt.Name), opt.Code)
+`, opt.Description, opt.ParamDesc, translateName(opt.Name), opt.Code)
 }
 
 func writeEnum(scope Scope, opt Option) {
+	if opt.Description != "" {
+		fmt.Printf("	// %s\n", opt.Description)
+	}
 	fmt.Printf("	%s %s = %d\n", scope.Name + translateName(opt.Name), scope.Name, opt.Code)
 }
 
@@ -158,7 +170,9 @@ func int64ToBytes(i int64) ([]byte, error) {
 			receiver := lowerFirst(scope.Name) + "s"
 
 			for _, opt := range(scope.Option) {
-				writeOpt(receiver, opt)
+				if opt.Description != "Deprecated" { // Eww
+					writeOpt(receiver, opt)
+				}
 			}
 			continue
 		}
