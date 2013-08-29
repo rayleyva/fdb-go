@@ -33,6 +33,17 @@ import (
 
 type Database struct {
 	d *C.FDBDatabase
+	Options databaseOptions
+}
+
+type databaseOptions struct {
+	database *Database
+}
+
+func (opt databaseOptions) setOpt(code int, param []byte, paramLen int) error {
+	return setOpt(func(p *C.uint8_t, pl C.int) C.fdb_error_t {
+		return C.fdb_database_set_option(opt.database.d, C.FDBDatabaseOption(code), p, pl)
+	}, param, paramLen)
 }
 
 func (d *Database) destroy() {
@@ -44,7 +55,8 @@ func (d *Database) CreateTransaction() (*Transaction, error) {
 	if err := C.fdb_database_create_transaction(d.d, &outt); err != 0 {
 		return nil, Error{Code: err}
 	}
-	t := &Transaction{outt}
+	t := &Transaction{t: outt}
+	t.Options.transaction = t
 	runtime.SetFinalizer(t, (*Transaction).destroy)
 	return t, nil
 }

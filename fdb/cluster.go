@@ -49,6 +49,7 @@ func (c *Cluster) OpenDatabase(dbname []byte) (*Database, error) {
 	}
 	C.fdb_future_destroy(f)
 	d := &Database{d: outd}
+	d.Options.database = d
 	runtime.SetFinalizer(d, (*Database).destroy)
 	return d, nil
 }

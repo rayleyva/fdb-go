@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"unsafe"
 )
 
 /* Would put this in futures.go but for the documented issue with
@@ -51,11 +52,32 @@ func (e Error) Error() string {
 
 var apiVersion int
 
-type api struct {
-	Options networkOptions
+func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte, paramLen int) error {
+	var p *C.uint8_t
+	var pl C.int
+
+	if len(param) > 0 {
+		p = (*C.uint8_t)(unsafe.Pointer(&param[0]))
+		pl = C.int(len(param))
+	}
+
+	if err := setter(p, pl); err != 0 {
+		return Error{Code: err}
+	}
+
+	return nil
 }
 
-type networkOptions struct {
+type networkOptions struct{}
+
+func (opt networkOptions) setOpt(code int, param []byte, paramLen int) error {
+	return setOpt(func(p *C.uint8_t, pl C.int) C.fdb_error_t {
+		return C.fdb_network_set_option(C.FDBNetworkOption(code), p, pl)
+	}, param, paramLen)
+}
+
+type api struct {
+	Options networkOptions
 }
 
 func APIVersion(ver int) (*api, error) {

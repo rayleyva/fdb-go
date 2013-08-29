@@ -39,6 +39,17 @@ type ReadTransaction interface {
 
 type Transaction struct {
 	t *C.FDBTransaction
+	Options transactionOptions
+}
+
+type transactionOptions struct {
+	transaction *Transaction
+}
+
+func (opt transactionOptions) setOpt(code int, param []byte, paramLen int) error {
+	return setOpt(func(p *C.uint8_t, pl C.int) C.fdb_error_t {
+		return C.fdb_transaction_set_option(opt.transaction.t, C.FDBTransactionOption(code), p, pl)
+	}, param, paramLen)
 }
 
 func (t *Transaction) destroy() {
@@ -111,6 +122,10 @@ func (t *Transaction) getKey(sel KeySelector, snapshot int) *FutureKey {
 
 func (t *Transaction) GetKey(sel KeySelector) *FutureKey {
 	return t.getKey(sel, 0)
+}
+
+func (t *Transaction) atomicOp(key []byte, param []byte, code int) {
+	C.fdb_transaction_atomic_op(t.t, (*C.uint8_t)(unsafe.Pointer(&key[0])), C.int(len(key)), (*C.uint8_t)(unsafe.Pointer(&param[0])), C.int(len(param)), C.FDBMutationType(code))
 }
 
 type Snapshot struct {
