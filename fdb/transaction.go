@@ -35,8 +35,8 @@ import (
 type ReadTransaction interface {
 	Get(key []byte) *FutureValue
 	GetKey(sel KeySelector) *FutureKey
-	GetRange(begin []byte, end []byte, options RangeOptions)
-	GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions)
+	GetRange(begin []byte, end []byte, options RangeOptions) *RangeResult
+	GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) *RangeResult
 }
 
 type Transaction struct {
@@ -197,4 +197,12 @@ func (s *Snapshot) Get(key []byte) *FutureValue {
 
 func (s *Snapshot) GetKey(sel KeySelector) *FutureKey {
 	return s.t.getKey(sel, 1)
+}
+
+func (s *Snapshot) GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) *RangeResult {
+	return s.t.getRangeSelector(begin, end, options, true)
+}
+
+func (s *Snapshot) GetRange(begin []byte, end []byte, options RangeOptions) *RangeResult {
+	return s.t.getRangeSelector(FirstGreaterOrEqual(begin), FirstGreaterOrEqual(end), options, true)
 }
