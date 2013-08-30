@@ -148,8 +148,7 @@ func (t *Transaction) ClearRange(begin []byte, end []byte) {
 }
 
 func (t *Transaction) ClearRangeStartsWith(prefix []byte) {
-	inc := strinc(prefix)
-	C.fdb_transaction_clear_range(t.t, byteSliceToPtr(prefix), C.int(len(prefix)), byteSliceToPtr(inc), C.int(len(inc)))
+	C.fdb_transaction_clear_range(t.t, byteSliceToPtr(prefix), C.int(len(prefix)), byteSliceToPtr(strinc(prefix)), C.int(len(prefix)))
 }
 
 func (t *Transaction) GetCommittedVersion() (int64, error) {
