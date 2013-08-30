@@ -36,6 +36,7 @@ type ReadTransaction interface {
 	GetKey(sel KeySelector) *FutureKey
 	GetRange(begin []byte, end []byte, options RangeOptions) *RangeResult
 	GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) *RangeResult
+	GetRangeStartsWith(prefix []byte, options RangeOptions) *RangeResult
 }
 
 type Transaction struct {
@@ -117,6 +118,23 @@ func (t *Transaction) GetRange(begin []byte, end []byte, options RangeOptions) *
 	return t.getRangeSelector(FirstGreaterOrEqual(begin), FirstGreaterOrEqual(end), options, false)
 }
 
+// FIXME: prefix is 0xFF*?
+func strinc(prefix []byte) []byte {
+	ret := make([]byte, len(prefix))
+	copy(ret, prefix)
+	for i := len(prefix); i > 0; i-- {
+		if prefix[i-1] != 0xFF {
+			ret[i-1] += 1
+			return ret
+		}
+	}
+	return prefix
+}
+
+func (t *Transaction) GetRangeStartsWith(prefix []byte, options RangeOptions) *RangeResult {
+	return t.getRangeSelector(FirstGreaterOrEqual(prefix), FirstGreaterOrEqual(strinc(prefix)), options, false)
+}
+
 func (t *Transaction) Set(key []byte, value []byte) {
 	C.fdb_transaction_set(t.t, byteSliceToPtr(key), C.int(len(key)), byteSliceToPtr(value), C.int(len(value)))
 }
@@ -127,6 +145,11 @@ func (t *Transaction) Clear(key []byte) {
 
 func (t *Transaction) ClearRange(begin []byte, end []byte) {
 	C.fdb_transaction_clear_range(t.t, byteSliceToPtr(begin), C.int(len(begin)), byteSliceToPtr(end), C.int(len(end)))
+}
+
+func (t *Transaction) ClearRangeStartsWith(prefix []byte) {
+	inc := strinc(prefix)
+	C.fdb_transaction_clear_range(t.t, byteSliceToPtr(prefix), C.int(len(prefix)), byteSliceToPtr(inc), C.int(len(inc)))
 }
 
 func (t *Transaction) GetCommittedVersion() (int64, error) {
@@ -204,4 +227,8 @@ func (s *Snapshot) GetRangeSelector(begin KeySelector, end KeySelector, options 
 
 func (s *Snapshot) GetRange(begin []byte, end []byte, options RangeOptions) *RangeResult {
 	return s.t.getRangeSelector(FirstGreaterOrEqual(begin), FirstGreaterOrEqual(end), options, true)
+}
+
+func (s *Snapshot) GetRangeStartsWith(prefix []byte, options RangeOptions) *RangeResult {
+	return s.t.getRangeSelector(FirstGreaterOrEqual(prefix), FirstGreaterOrEqual(strinc(prefix)), options, true)
 }
