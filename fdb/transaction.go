@@ -175,7 +175,7 @@ func (t *Transaction) AddReadConflictRange(begin []byte, end []byte) error {
 }
 
 func (t *Transaction) AddReadConflictKey(key []byte) error {
-	return t.addConflictRange(key, append(key, byte('\x00')), ConflictRangeTypeRead)
+	return t.addConflictRange(key, append(key, 0x00), ConflictRangeTypeRead)
 }
 
 func (t *Transaction) AddWriteConflictRange(begin []byte, end []byte) error {
@@ -183,7 +183,7 @@ func (t *Transaction) AddWriteConflictRange(begin []byte, end []byte) error {
 }
 
 func (t *Transaction) AddWriteConflictKey(key []byte) error {
-	return t.addConflictRange(key, append(key, byte('\x00')), ConflictRangeTypeWrite)
+	return t.addConflictRange(key, append(key, 0x00), ConflictRangeTypeWrite)
 }
 
 type Snapshot struct {
