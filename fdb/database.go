@@ -40,10 +40,10 @@ type databaseOptions struct {
 	database *Database
 }
 
-func (opt databaseOptions) setOpt(code int, param []byte, paramLen int) error {
+func (opt databaseOptions) setOpt(code int, param []byte) error {
 	return setOpt(func(p *C.uint8_t, pl C.int) C.fdb_error_t {
 		return C.fdb_database_set_option(opt.database.d, C.FDBDatabaseOption(code), p, pl)
-	}, param, paramLen)
+	}, param)
 }
 
 func (d *Database) destroy() {

@@ -52,16 +52,8 @@ func (e Error) Error() string {
 
 var apiVersion int
 
-func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte, paramLen int) error {
-	var p *C.uint8_t
-	var pl C.int
-
-	if len(param) > 0 {
-		p = (*C.uint8_t)(unsafe.Pointer(&param[0]))
-		pl = C.int(len(param))
-	}
-
-	if err := setter(p, pl); err != 0 {
+func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte) error {
+	if err := setter(byteSliceToPtr(param), C.int(len(param))); err != 0 {
 		return Error{Code: err}
 	}
 
@@ -70,10 +62,10 @@ func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte, paramLen
 
 type networkOptions struct{}
 
-func (opt networkOptions) setOpt(code int, param []byte, paramLen int) error {
+func (opt networkOptions) setOpt(code int, param []byte) error {
 	return setOpt(func(p *C.uint8_t, pl C.int) C.fdb_error_t {
 		return C.fdb_network_set_option(C.FDBNetworkOption(code), p, pl)
-	}, param, paramLen)
+	}, param)
 }
 
 type api struct {
@@ -171,4 +163,12 @@ func (api *api) CreateCluster(cluster string) (*Cluster, error) {
 	c := &Cluster{c: outc}
 	runtime.SetFinalizer(c, (*Cluster).destroy)
 	return c, nil
+}
+
+func byteSliceToPtr(b []byte) *C.uint8_t {
+	if len(b) > 0 {
+		return (*C.uint8_t)(unsafe.Pointer(&b[0]))
+	} else {
+		return nil
+	}
 }

@@ -182,12 +182,18 @@ func (f *FutureKeyValueArray) destroy() {
 }
 
 func stringRefToSlice(ptr uintptr) []byte {
-	ret := make([]byte, int(*((*C.int)(unsafe.Pointer(ptr+8)))))
+	size := int(*((*C.int)(unsafe.Pointer(ptr+8))))
+
+	if size == 0 {
+		return []byte{}
+	}
+
+	ret := make([]byte, size)
 
 	dst := unsafe.Pointer(&(ret[0]))
 	src := unsafe.Pointer(*(**C.uint8_t)(unsafe.Pointer(ptr)))
 
-	C.memcpy(dst, src, C.size_t(len(ret)))
+	C.memcpy(dst, src, C.size_t(size))
 
 	return ret
 }

@@ -57,7 +57,7 @@ type Options struct {
 
 func writeOptString(receiver string, function string, opt Option) {
 	fmt.Printf(`func (opt %s) %s(param string) error {
-	return opt.setOpt(%d, []byte(param), len([]byte(param)))
+	return opt.setOpt(%d, []byte(param))
 }
 `, receiver, function, opt.Code)
 }
@@ -68,14 +68,14 @@ func writeOptInt(receiver string, function string, opt Option) {
 	if e != nil {
 		return e
 	}
-	return opt.setOpt(%d, b, 8)
+	return opt.setOpt(%d, b)
 }
 `, receiver, function, opt.Code)
 }
 
 func writeOptNone(receiver string, function string, opt Option) {
 	fmt.Printf(`func (opt %s) %s() error {
-	return opt.setOpt(%d, nil, 0)
+	return opt.setOpt(%d, nil)
 }
 `, receiver, function, opt.Code)
 }

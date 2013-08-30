@@ -29,7 +29,6 @@ import "C"
 
 import (
 	"runtime"
-	"unsafe"
 )
 
 type Cluster struct {
@@ -41,7 +40,7 @@ func (c *Cluster) destroy() {
 }
 
 func (c *Cluster) OpenDatabase(dbname []byte) (*Database, error) {
-	f := C.fdb_cluster_create_database(c.c, (*C.uint8_t)(unsafe.Pointer(&dbname[0])), C.int(len(dbname)))
+	f := C.fdb_cluster_create_database(c.c, byteSliceToPtr(dbname), C.int(len(dbname)))
 	fdb_future_block_until_ready(f)
 	outd := &C.FDBDatabase{}
 	if err := C.fdb_future_get_database(f, &outd); err != 0 {
