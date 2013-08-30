@@ -35,6 +35,8 @@ import (
 type ReadTransaction interface {
 	Get(key []byte) *FutureValue
 	GetKey(sel KeySelector) *FutureKey
+	GetRange(begin []byte, end []byte, options RangeOptions)
+	GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions)
 }
 
 type Transaction struct {
@@ -54,6 +56,14 @@ func (opt transactionOptions) setOpt(code int, param []byte, paramLen int) error
 
 func (t *Transaction) destroy() {
 	C.fdb_transaction_destroy(t.t)
+}
+
+func (t *Transaction) Cancel() {
+	C.fdb_transaction_cancel(t.t)
+}
+
+func (t *Transaction) SetReadVersion(version int64) {
+	C.fdb_transaction_set_read_version(t.t, C.int64_t(version))
 }
 
 func (t *Transaction) Snapshot() *Snapshot {
@@ -80,6 +90,32 @@ func (t *Transaction) get(key []byte, snapshot int) *FutureValue {
 
 func (t *Transaction) Get(key []byte) *FutureValue {
 	return t.get(key, 0)
+}
+
+func (t *Transaction) doGetRange(begin KeySelector, end KeySelector, options RangeOptions, snapshot bool, iteration int) *FutureKeyValueArray {
+	f := &FutureKeyValueArray{future: future{f: C.fdb_transaction_get_range(t.t, (*C.uint8_t)(unsafe.Pointer(&(begin.Key[0]))), C.int(len(begin.Key)), C.fdb_bool_t(boolToInt(begin.OrEqual)), C.int(begin.Offset), (*C.uint8_t)(unsafe.Pointer(&(end.Key[0]))), C.int(len(end.Key)), C.fdb_bool_t(boolToInt(end.OrEqual)), C.int(end.Offset), C.int(options.Limit), C.int(0), C.FDBStreamingMode(options.Mode-1), C.int(iteration), C.fdb_bool_t(boolToInt(snapshot)), C.fdb_bool_t(boolToInt(options.Reverse)))}}
+	runtime.SetFinalizer(f, (*FutureKeyValueArray).destroy)
+	return f
+}
+
+func (t *Transaction) getRangeSelector(begin KeySelector, end KeySelector, options RangeOptions, snapshot bool) *RangeResult {
+	rr := RangeResult{
+		t: t,
+		begin: begin,
+		end: end,
+		options: options,
+		snapshot: snapshot,
+		f: t.doGetRange(begin, end, options, snapshot, 1),
+	}
+	return &rr
+}
+
+func (t *Transaction) GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) *RangeResult {
+	return t.getRangeSelector(begin, end, options, false)
+}
+
+func (t *Transaction) GetRange(begin []byte, end []byte, options RangeOptions) *RangeResult {
+	return t.getRangeSelector(FirstGreaterOrEqual(begin), FirstGreaterOrEqual(end), options, false)
 }
 
 func (t *Transaction) Set(key []byte, value []byte) {
@@ -126,6 +162,29 @@ func (t *Transaction) GetKey(sel KeySelector) *FutureKey {
 
 func (t *Transaction) atomicOp(key []byte, param []byte, code int) {
 	C.fdb_transaction_atomic_op(t.t, (*C.uint8_t)(unsafe.Pointer(&key[0])), C.int(len(key)), (*C.uint8_t)(unsafe.Pointer(&param[0])), C.int(len(param)), C.FDBMutationType(code))
+}
+
+func (t *Transaction) addConflictRange(begin []byte, end []byte, crtype ConflictRangeType) error {
+	if err := C.fdb_transaction_add_conflict_range(t.t, (*C.uint8_t)(unsafe.Pointer(&begin[0])), C.int(len(begin)), (*C.uint8_t)(unsafe.Pointer(&end[0])), C.int(len(end)), C.FDBConflictRangeType(crtype)); err != 0 {
+		return Error{Code: err}
+	}
+	return nil
+}
+
+func (t *Transaction) AddReadConflictRange(begin []byte, end []byte) error {
+	return t.addConflictRange(begin, end, ConflictRangeTypeRead)
+}
+
+func (t *Transaction) AddReadConflictKey(key []byte) error {
+	return t.addConflictRange(key, append(key, byte('\x00')), ConflictRangeTypeRead)
+}
+
+func (t *Transaction) AddWriteConflictRange(begin []byte, end []byte) error {
+	return t.addConflictRange(begin, end, ConflictRangeTypeWrite)
+}
+
+func (t *Transaction) AddWriteConflictKey(key []byte) error {
+	return t.addConflictRange(key, append(key, byte('\x00')), ConflictRangeTypeWrite)
 }
 
 type Snapshot struct {

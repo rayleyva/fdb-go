@@ -118,11 +118,11 @@ func (t *Transaction) %s(key []byte, param []byte) {
 `, opt.Description, opt.ParamDesc, translateName(opt.Name), opt.Code)
 }
 
-func writeEnum(scope Scope, opt Option) {
+func writeEnum(scope Scope, opt Option, delta int) {
 	if opt.Description != "" {
 		fmt.Printf("	// %s\n", opt.Description)
 	}
-	fmt.Printf("	%s %s = %d\n", scope.Name + translateName(opt.Name), scope.Name, opt.Code)
+	fmt.Printf("	%s %s = %d\n", scope.Name + translateName(opt.Name), scope.Name, opt.Code + delta)
 }
 
 func main() {
@@ -184,12 +184,18 @@ func int64ToBytes(i int64) ([]byte, error) {
 			continue
 		}
 
+		// We really need the default StreamingMode (0) to be ITERATOR
+		var d int
+		if scope.Name == "StreamingMode" {
+			d = 1
+		}
+
 		fmt.Printf(`
 type %s int
 const (
 `, scope.Name)
 		for _, opt := range(scope.Option) {
-			writeEnum(scope, opt)
+			writeEnum(scope, opt, d)
 		}
 		fmt.Println(")")
 	}

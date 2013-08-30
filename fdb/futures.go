@@ -25,6 +25,7 @@ package fdb
  #cgo LDFLAGS: -lfdb_c -lm
  #define FDB_API_VERSION 100
  #include <foundationdb/fdb_c.h>
+ #include <string.h>
 
  extern void notifyChannel(void*);
 
@@ -63,6 +64,10 @@ func (f *future) BlockUntilReady() {
 
 func (f *future) IsReady() bool {
 	return C.fdb_future_is_ready(f.f) != 0
+}
+
+func (f *future) Cancel() {
+	C.fdb_future_cancel(f.f)
 }
 
 type FutureValue struct {
@@ -166,4 +171,55 @@ func (f *FutureNil) GetOrPanic() {
 	if err := f.GetWithError(); err != nil {
 		panic(err)
 	}
+}
+
+type FutureKeyValueArray struct {
+	future
+}
+
+func (f *FutureKeyValueArray) destroy() {
+	C.fdb_future_destroy(f.f)
+}
+
+func stringRefToSlice(ptr uintptr) []byte {
+	ret := make([]byte, int(*((*C.int)(unsafe.Pointer(ptr+8)))))
+
+	dst := unsafe.Pointer(&(ret[0]))
+	src := unsafe.Pointer(*(**C.uint8_t)(unsafe.Pointer(ptr)))
+
+	C.memcpy(dst, src, C.size_t(len(ret)))
+
+	return ret
+}
+
+func (f *FutureKeyValueArray) GetWithError() ([]KeyValue, bool, error) {
+	f.BlockUntilReady()
+
+	var kvs *C.void
+	var count C.int
+	var more C.fdb_bool_t
+
+	if err := C.fdb_future_get_keyvalue_array(f.f, (**C.FDBKeyValue)(unsafe.Pointer(&kvs)), &count, &more); err != 0 {
+		return nil, false, Error{Code: err}
+	}
+
+	ret := make([]KeyValue, int(count))
+
+	for i := 0; i < int(count); i++ {
+		kvptr := uintptr(unsafe.Pointer(kvs)) + uintptr(i * 24)
+
+		ret[i].Key = stringRefToSlice(kvptr)
+		ret[i].Value = stringRefToSlice(kvptr + 12)
+
+	}
+
+ 	return ret, (more != 0), nil
+}
+
+func (f *FutureKeyValueArray) GetOrPanic() ([]KeyValue, bool) {
+	kvs, more, err := f.GetWithError()
+	if err != nil {
+		panic(err)
+	}
+	return kvs, more
 }

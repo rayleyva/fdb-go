@@ -152,19 +152,19 @@ func (opt transactionOptions) SetRetryLimit(param int64) error {
 type StreamingMode int
 const (
 	// Client intends to consume the entire range and would like it all transferred as early as possible.
-	StreamingModeWantAll StreamingMode = -2
+	StreamingModeWantAll StreamingMode = -1
 	// The default. The client doesn't know how much of the range it is likely to used and wants different performance concerns to be balanced. Only a small portion of data is transferred to the client initially (in order to minimize costs if the client doesn't read the entire range), and as the caller iterates over more items in the range larger batches will be transferred in order to minimize latency.
-	StreamingModeIterator StreamingMode = -1
+	StreamingModeIterator StreamingMode = 0
 	// Infrequently used. The client has passed a specific row limit and wants that many rows delivered in a single batch. Because of iterator operation in client drivers make request batches transparent to the user, consider ``WANT_ALL`` StreamingMode instead. A row limit must be specified if this mode is used.
-	StreamingModeExact StreamingMode = 0
+	StreamingModeExact StreamingMode = 1
 	// Infrequently used. Transfer data in batches small enough to not be much more expensive than reading individual rows, to minimize cost if iteration stops early.
-	StreamingModeSmall StreamingMode = 1
+	StreamingModeSmall StreamingMode = 2
 	// Infrequently used. Transfer data in batches sized in between small and large.
-	StreamingModeMedium StreamingMode = 2
+	StreamingModeMedium StreamingMode = 3
 	// Infrequently used. Transfer data in batches large enough to be, in a high-concurrency environment, nearly as efficient as possible. If the client stops iteration early, some disk and network bandwidth may be wasted. The batch size may still be too small to allow a single client to get high throughput from the database, so if that is what you need consider the SERIAL StreamingMode.
-	StreamingModeLarge StreamingMode = 3
+	StreamingModeLarge StreamingMode = 4
 	// Transfer data in batches large enough that an individual client can get reasonable read bandwidth from the database. If the client stops iteration early, considerable disk and network bandwidth may be wasted.
-	StreamingModeSerial StreamingMode = 4
+	StreamingModeSerial StreamingMode = 5
 )
 
 // Performs an addition of little-endian integers. If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``. The integers to be added must be stored in a little-endian representation.  They can be signed in two's complement representation or unsigned. You can add to an integer at a known offset in the value by prepending the appropriate number of zero bytes to ``param`` and padding with zero bytes to match the length of the value. However, this offset technique requires that you know the addition will not cause the integer field within the value to overflow.
