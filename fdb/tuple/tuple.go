@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-package fdb
+package tuple
 
 import (
 	"fmt"
@@ -84,7 +84,7 @@ func encodeInt(buf *bytes.Buffer, i int64) {
 	buf.Write(ibuf.Bytes()[8-n:])
 }
 
-func (a *api) Pack(t Tuple) ([]byte, error) {
+func Pack(t Tuple) ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	for i, e := range(t) {
@@ -98,7 +98,7 @@ func (a *api) Pack(t Tuple) ([]byte, error) {
 		case []byte:
 			encodeBytes(buf, e)
 		default:
-			return []byte{}, fmt.Errorf("Unencodable type at index %d", i)
+			return []byte{}, fmt.Errorf("Unencodable type at index %d (%v, %T)", i, e, e)
 		}
 	}
 
@@ -159,7 +159,7 @@ func decodeInt(b []byte) (int64, int) {
 	return ret, n+1
 }
 
-func (a *api) Unpack(b []byte) (Tuple, error) {
+func Unpack(b []byte) (Tuple, error) {
 	var t Tuple
 
 	var i int
@@ -187,4 +187,19 @@ func (a *api) Unpack(b []byte) (Tuple, error) {
 	}
 
 	return t, nil
+}
+
+func Range(t Tuple) ([]byte, []byte, error) {
+	p, e := Pack(t)
+	if e != nil {
+		return []byte{}, []byte{}, e
+	}
+	begin := make([]byte, len(p) + 1)
+	copy(begin, p)
+
+	end := make([]byte, len(p) + 1)
+	copy(end, p)
+	end[len(p)] = 0xFF
+
+	return begin, end, nil
 }
