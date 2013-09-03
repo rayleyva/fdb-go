@@ -51,18 +51,19 @@ func (rr *RangeResult) GetSliceWithError() ([]KeyValue, error) {
 	ri := rr.Iterator()
 
 	if rr.options.Limit != 0 {
-		ret = make([]KeyValue, 0, rr.options.Limit)
 		ri.options.Mode = StreamingModeExact
 	} else {
 		ri.options.Mode = StreamingModeWantAll
 	}
 
 	for ri.Advance() {
+		if ri.err != nil {
+			return nil, ri.err
+		}
 		ret = append(ret, ri.kvs...)
 		ri.index = len(ri.kvs)
 		ri.fetchNextBatch()
 	}
-
 
 	return ret, nil
 }
@@ -104,17 +105,19 @@ func (ri *RangeIterator) Advance() bool {
 		return false
 	}
 
-	if ri.f != nil {
-		ri.kvs, ri.more, ri.err = ri.f.GetWithError()
-		ri.index = 0
-		ri.f = nil
-
-		if len(ri.kvs) == 0 {
-			return false
-		}
+	if ri.f == nil {
+		return true
 	}
 
-	return true
+	ri.kvs, ri.more, ri.err = ri.f.GetWithError()
+	ri.index = 0
+	ri.f = nil
+	
+	if ri.err != nil || len(ri.kvs) > 0 {
+		return true
+	}
+
+	return false
 }
 
 func (ri *RangeIterator) fetchNextBatch() {
