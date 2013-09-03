@@ -21,12 +21,12 @@ import (
 )
 
 func main() {
-	api, err := fdb.APIVersion(100)
+	err := fdb.APIVersion(100)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	db, err := api.Open(nil)
+	db, err := fdb.Open(nil)
 	if err != nil {
 		log.Fatal(err)
 	}
