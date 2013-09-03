@@ -42,10 +42,14 @@ func notifyChannel(ch *chan struct{}) {
 	*ch <- struct{}{}
 }
 
+// An Error represents a low-level error returned by the FoundationDB
+// C library.
 type Error struct {
 	code C.fdb_error_t
 }
 
+// Code returns the error code specific to this error (see
+// https://foundationdb.com/documentation/api-error-codes.html)
 func (e *Error) Code() int {
 	return int(e.code)
 }
@@ -80,16 +84,28 @@ func (opt networkOptions) setOpt(code int, param []byte) error {
 	}, param)
 }
 
-func APIVersion(ver int) error {
+// APIVersion determines the runtime behavior the fdb package. If the
+// requested version is not supported by both the fdb package and the
+// FoundationDB C library, an error will be returned. You must call
+// this function prior to any other functions in the fdb package.
+func APIVersion(version int) error {
 	if apiVersion != 0 {
 		return &Error{errorApiVersionAlreadySet}
 	}
 
-	if e := C.fdb_select_api_version_impl(C.int(ver), 100); e != 0 {
+	if apiVersion < 100 {
+		return &Error{errorApiVersionNotSupported}
+	}
+
+	if apiVersion > 100 {
+		return &Error{errorApiVersionNotSupported}
+	}
+
+	if e := C.fdb_select_api_version_impl(C.int(version), 100); e != 0 {
 		return &Error{e}
 	}
 
-	apiVersion = ver
+	apiVersion = version
 
 	return nil
 }
