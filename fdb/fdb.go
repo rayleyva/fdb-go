@@ -43,22 +43,26 @@ func notifyChannel(ch *chan struct{}) {
 }
 
 type Error struct {
-	Code C.fdb_error_t
+	code C.fdb_error_t
 }
 
-func NewError(i int) Error {
-	return Error{Code: C.fdb_error_t(i)}
+func (e *Error) Code() int {
+	return int(e.code)
 }
 
-func (e Error) Error() string {
-	return fmt.Sprintf("%s (%d)", C.GoString(C.fdb_get_error(e.Code)), e.Code)
+func NewError(i int) *Error {
+	return &Error{C.fdb_error_t(i)}
+}
+
+func (e *Error) Error() string {
+	return fmt.Sprintf("%s (%d)", C.GoString(C.fdb_get_error(e.code)), e.code)
 }
 
 var apiVersion int
 
 func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte) error {
 	if err := setter(byteSliceToPtr(param), C.int(len(param))); err != 0 {
-		return Error{Code: err}
+		return &Error{err}
 	}
 
 	return nil
@@ -67,33 +71,41 @@ func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte) error {
 type networkOptions struct{}
 
 func (opt networkOptions) setOpt(code int, param []byte) error {
+	if apiVersion == 0 {
+		return &Error{errorApiVersionUnset}
+	}
+
 	return setOpt(func(p *C.uint8_t, pl C.int) C.fdb_error_t {
 		return C.fdb_network_set_option(C.FDBNetworkOption(code), p, pl)
 	}, param)
 }
 
-type api struct {
-	Options networkOptions
-}
-
-func APIVersion(ver int) (*api, error) {
+func APIVersion(ver int) error {
 	if apiVersion != 0 {
-		return nil, fmt.Errorf("FoundationDB API already loaded at version %d", apiVersion)
+		return &Error{errorApiVersionAlreadySet}
 	}
+
 	if e := C.fdb_select_api_version_impl(C.int(ver), 100); e != 0 {
-		return nil, fmt.Errorf("FoundationDB API error (requested API 100)")
+		return &Error{e}
 	}
+
 	apiVersion = ver
-	return &api{}, nil
+
+	return nil
 }
 
 var networkStarted bool
 var networkMutex sync.Mutex
 
-func (api *api) startNetwork() error {
-	if e := C.fdb_setup_network(); e != 0 {
-		return Error{Code: e}
+func startNetwork() error {
+	if apiVersion == 0 {
+		return &Error{errorApiVersionUnset}
 	}
+
+	if e := C.fdb_setup_network(); e != 0 {
+		return &Error{e}
+	}
+
 	go C.fdb_run_network()
 
 	networkStarted = true
@@ -101,11 +113,11 @@ func (api *api) startNetwork() error {
 	return nil
 }
 
-func (api *api) StartNetwork() error {
+func StartNetwork() error {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
-	return api.startNetwork()
+	return startNetwork()
 }
 
 type DBConfig struct {
@@ -113,12 +125,16 @@ type DBConfig struct {
 	DBName []byte
 }
 
-func (api *api) Open(conf *DBConfig) (db *Database, e error) {
+func Open(conf *DBConfig) (db *Database, e error) {
+	if apiVersion == 0 {
+		return nil, &Error{errorApiVersionUnset}
+	}
+
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
 	if !networkStarted {
-		e = api.startNetwork()
+		e = startNetwork()
 		if e != nil {
 			return
 		}
@@ -132,7 +148,7 @@ func (api *api) Open(conf *DBConfig) (db *Database, e error) {
 	fdb_future_block_until_ready(f)
 	outc := &C.FDBCluster{}
 	if err := C.fdb_future_get_cluster(f, &outc); err != 0 {
-		return nil, Error{Code: err}
+		return nil, &Error{err}
 	}
 	C.fdb_future_destroy(f)
 	c := &Cluster{c: outc}
@@ -150,7 +166,11 @@ func (api *api) Open(conf *DBConfig) (db *Database, e error) {
 	return
 }
 
-func (api *api) CreateCluster(cluster string) (*Cluster, error) {
+func CreateCluster(cluster string) (*Cluster, error) {
+	if apiVersion == 0 {
+		return nil, &Error{errorApiVersionUnset}
+	}
+
 	var cf *C.char
 
 	if len(cluster) != 0 {
@@ -159,13 +179,19 @@ func (api *api) CreateCluster(cluster string) (*Cluster, error) {
 
 	f := C.fdb_create_cluster(cf)
 	fdb_future_block_until_ready(f)
-	outc := &C.FDBCluster{}
+
+	var outc *C.FDBCluster
+
 	if err := C.fdb_future_get_cluster(f, &outc); err != 0 {
-		return nil, Error{Code: err}
+		return nil, &Error{err}
 	}
+
 	C.fdb_future_destroy(f)
+
 	c := &Cluster{c: outc}
+
 	runtime.SetFinalizer(c, (*Cluster).destroy)
+
 	return c, nil
 }
 

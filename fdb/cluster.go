@@ -40,15 +40,25 @@ func (c *Cluster) destroy() {
 }
 
 func (c *Cluster) OpenDatabase(dbname []byte) (*Database, error) {
+	if c.c == nil {
+		return nil, &Error{errorClientInvalidOperation}
+	}
+
 	f := C.fdb_cluster_create_database(c.c, byteSliceToPtr(dbname), C.int(len(dbname)))
 	fdb_future_block_until_ready(f)
-	outd := &C.FDBDatabase{}
+
+	var outd *C.FDBDatabase
+
 	if err := C.fdb_future_get_database(f, &outd); err != 0 {
-		return nil, Error{Code: err}
+		return nil, &Error{err}
 	}
+
 	C.fdb_future_destroy(f)
+
 	d := &Database{d: outd}
 	d.Options.database = d
+
 	runtime.SetFinalizer(d, (*Database).destroy)
+
 	return d, nil
 }

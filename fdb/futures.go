@@ -59,15 +59,22 @@ func fdb_future_block_until_ready(f *C.FDBFuture) {
 }
 
 func (f *future) BlockUntilReady() {
-	fdb_future_block_until_ready(f.f)
+	if f.f != nil {
+		fdb_future_block_until_ready(f.f)
+	}
 }
 
 func (f *future) IsReady() bool {
-	return C.fdb_future_is_ready(f.f) != 0
+	if f.f != nil {
+		return C.fdb_future_is_ready(f.f) != 0
+	}
+	return true
 }
 
 func (f *future) Cancel() {
-	C.fdb_future_cancel(f.f)
+	if f.f != nil {
+		C.fdb_future_cancel(f.f)
+	}
 }
 
 type FutureValue struct {
@@ -81,17 +88,22 @@ func (v *FutureValue) destroy() {
 }
 
 func (v *FutureValue) GetWithError() ([]byte, error) {
+	if v.f == nil {
+		return nil, &Error{errorClientInvalidOperation}
+	}
+
 	if v.set {
 		return v.v, nil
 	}
 
-	v.BlockUntilReady()
+	fdb_future_block_until_ready(v.f)
+
 	var present C.fdb_bool_t
 	var value *C.uint8_t
 	var length C.int
 	if err := C.fdb_future_get_value(v.f, &present, &value, &length); err != 0 {
 		if err != 2017 {
-			return nil, Error{Code: err}
+			return nil, &Error{err}
 		}
 	}
 	if present != 0 {
@@ -120,16 +132,21 @@ func (k *FutureKey) destroy() {
 }
 
 func (k *FutureKey) GetWithError() ([]byte, error) {
+	if k.f == nil {
+		return nil, &Error{errorClientInvalidOperation}
+	}
+
 	if k.k != nil {
 		return k.k, nil
 	}
 
-	k.BlockUntilReady()
+	fdb_future_block_until_ready(k.f)
+
 	var value *C.uint8_t
 	var length C.int
 	if err := C.fdb_future_get_key(k.f, &value, &length); err != 0 {
 		if err != 2017 {
-			return nil, Error{Code: err}
+			return nil, &Error{err}
 		}
 	}
 	k.k = C.GoBytes(unsafe.Pointer(value), length)
@@ -160,10 +177,15 @@ func (f *FutureNil) destroy() {
 }
 
 func (f *FutureNil) GetWithError() error {
+	if f.f == nil {
+		return &Error{errorClientInvalidOperation}
+	}
+
 	fdb_future_block_until_ready(f.f)
 	if err := C.fdb_future_get_error(f.f); err != 0 {
-		return Error{Code: err}
+		return &Error{err}
 	}
+
 	return nil
 }
 
@@ -199,14 +221,18 @@ func stringRefToSlice(ptr uintptr) []byte {
 }
 
 func (f *FutureKeyValueArray) GetWithError() ([]KeyValue, bool, error) {
-	f.BlockUntilReady()
+	if f.f == nil {
+		return nil, false, &Error{errorClientInvalidOperation}
+	}
+
+	fdb_future_block_until_ready(f.f)
 
 	var kvs *C.void
 	var count C.int
 	var more C.fdb_bool_t
 
 	if err := C.fdb_future_get_keyvalue_array(f.f, (**C.FDBKeyValue)(unsafe.Pointer(&kvs)), &count, &more); err != 0 {
-		return nil, false, Error{Code: err}
+		return nil, false, &Error{err}
 	}
 
 	ret := make([]KeyValue, int(count))
@@ -239,10 +265,15 @@ func (v *FutureVersion) destroy() {
 }
 
 func (v *FutureVersion) GetWithError() (int64, error) {
-	v.BlockUntilReady()
+	if v.f == nil {
+		return 0, &Error{errorClientInvalidOperation}
+	}
+
+	fdb_future_block_until_ready(v.f)
+
 	var ver C.int64_t
 	if err := C.fdb_future_get_version(v.f, &ver); err != 0 {
-		return 0, Error{Code: err}
+		return 0, &Error{err}
 	}
 	return int64(ver), nil
 }

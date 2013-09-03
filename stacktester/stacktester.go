@@ -41,8 +41,8 @@ func (sm *StackMachine) waitAndPop() (ret interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
-			case fdb.Error:
-				p, e := tuple.Pack(tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r.Code)))})
+			case *fdb.Error:
+				p, e := tuple.Pack(tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", r.Code()))})
 				if e != nil {
 					panic(e)
 				}
@@ -125,8 +125,8 @@ func (sm *StackMachine) processInst(inst tuple.Tuple) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
-			case fdb.Error:
-				p, e := tuple.Pack(tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r.Code)))})
+			case *fdb.Error:
+				p, e := tuple.Pack(tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", r.Code()))})
 				if e != nil {
 					panic(e)
 				}
@@ -480,13 +480,13 @@ func main() {
 
 	var e error
 
-	api, e := fdb.APIVersion(100)
+	e = fdb.APIVersion(100)
 	if e != nil {
 		log.Fatal(e)
 	}
 
 	config.DBName = []byte("DB")
-	db, e = api.Open(&config)
+	db, e = fdb.Open(&config)
 	if e != nil {
 		log.Fatal(e)
 	}

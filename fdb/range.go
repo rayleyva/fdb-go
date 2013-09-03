@@ -46,6 +46,10 @@ type RangeResult struct {
 }
 
 func (rr *RangeResult) GetSliceWithError() ([]KeyValue, error) {
+	if rr.t == nil {
+		return nil, &Error{errorClientInvalidOperation}
+	}
+
 	var ret []KeyValue
 
 	ri := rr.Iterator()
@@ -143,6 +147,10 @@ func (ri *RangeIterator) fetchNextBatch() {
 }
 
 func (ri *RangeIterator) GetNextWithError() (kv KeyValue, e error) {
+	if ri.rr == nil {
+		return KeyValue{}, &Error{errorClientInvalidOperation}
+	}
+
 	if ri.err != nil {
 		e = ri.err
 		return

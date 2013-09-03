@@ -41,6 +41,10 @@ type databaseOptions struct {
 }
 
 func (opt databaseOptions) setOpt(code int, param []byte) error {
+	if opt.database == nil {
+		return &Error{errorClientInvalidOperation}
+	}
+
 	return setOpt(func(p *C.uint8_t, pl C.int) C.fdb_error_t {
 		return C.fdb_database_set_option(opt.database.d, C.FDBDatabaseOption(code), p, pl)
 	}, param)
@@ -51,17 +55,29 @@ func (d *Database) destroy() {
 }
 
 func (d *Database) CreateTransaction() (*Transaction, error) {
-	outt := &C.FDBTransaction{}
-	if err := C.fdb_database_create_transaction(d.d, &outt); err != 0 {
-		return nil, Error{Code: err}
+	if d.d == nil {
+		return nil, &Error{errorClientInvalidOperation}
 	}
+
+	var outt *C.FDBTransaction
+
+	if err := C.fdb_database_create_transaction(d.d, &outt); err != 0 {
+		return nil, &Error{err}
+	}
+
 	t := &Transaction{t: outt}
 	t.Options.transaction = t
+
 	runtime.SetFinalizer(t, (*Transaction).destroy)
+
 	return t, nil
 }
 
 func (d *Database) Transact(f func(tr *Transaction) (interface{}, error)) (ret interface{}, e error) {
+	if d.d == nil {
+		return nil, &Error{errorClientInvalidOperation}
+	}
+
 	tr, e := d.CreateTransaction()
 	/* Any error here is non-retryable */
 	if e != nil {
@@ -72,7 +88,7 @@ func (d *Database) Transact(f func(tr *Transaction) (interface{}, error)) (ret i
 		defer func() {
 			if r := recover(); r != nil {
 				switch r := r.(type) {
-				case Error:
+				case *Error:
 					e = r
 				default:
 					panic(r)
@@ -98,7 +114,7 @@ func (d *Database) Transact(f func(tr *Transaction) (interface{}, error)) (ret i
 		}
 
 		switch ep := e.(type) {
-		case Error:
+		case *Error:
 			e = tr.OnError(ep).GetWithError()
 		}
 
@@ -111,6 +127,10 @@ func (d *Database) Transact(f func(tr *Transaction) (interface{}, error)) (ret i
 }
 
 func (d *Database) Get(key []byte) ([]byte, error) {
+	if d.d == nil {
+		return nil, &Error{errorClientInvalidOperation}
+	}
+
 	v, e := d.Transact(func (tr *Transaction) (interface{}, error) {
 		return tr.Get(key).GetOrPanic(), nil
 	})
@@ -121,6 +141,10 @@ func (d *Database) Get(key []byte) ([]byte, error) {
 }
 
 func (d *Database) GetKey(sel KeySelector) ([]byte, error) {
+	if d.d == nil {
+		return nil, &Error{errorClientInvalidOperation}
+	}
+
 	v, e := d.Transact(func (tr *Transaction) (interface{}, error) {
 		return tr.GetKey(sel).GetOrPanic(), nil
 	})
@@ -131,6 +155,10 @@ func (d *Database) GetKey(sel KeySelector) ([]byte, error) {
 }
 
 func (d *Database) GetRange(begin []byte, end []byte, options RangeOptions) ([]KeyValue, error) {
+	if d.d == nil {
+		return nil, &Error{errorClientInvalidOperation}
+	}
+
 	v, e := d.Transact(func (tr *Transaction) (interface{}, error) {
 		return tr.GetRange(begin, end, options).GetSliceOrPanic(), nil
 	})
@@ -141,6 +169,10 @@ func (d *Database) GetRange(begin []byte, end []byte, options RangeOptions) ([]K
 }
 
 func (d *Database) GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) ([]KeyValue, error) {
+	if d.d == nil {
+		return nil, &Error{errorClientInvalidOperation}
+	}
+
 	v, e := d.Transact(func (tr *Transaction) (interface{}, error) {
 		return tr.GetRangeSelector(begin, end, options).GetSliceOrPanic(), nil
 	})
@@ -151,6 +183,10 @@ func (d *Database) GetRangeSelector(begin KeySelector, end KeySelector, options 
 }
 
 func (d *Database) GetRangeStartsWith(prefix []byte, options RangeOptions) ([]KeyValue, error) {
+	if d.d == nil {
+		return nil, &Error{errorClientInvalidOperation}
+	}
+
 	v, e := d.Transact(func (tr *Transaction) (interface{}, error) {
 		return tr.GetRangeStartsWith(prefix, options).GetSliceOrPanic(), nil
 	})
@@ -161,6 +197,10 @@ func (d *Database) GetRangeStartsWith(prefix []byte, options RangeOptions) ([]Ke
 }
 
 func (d *Database) Set(key []byte, value []byte) error {
+	if d.d == nil {
+		return &Error{errorClientInvalidOperation}
+	}
+
 	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
 		tr.Set(key, value)
 		return nil, nil
@@ -172,6 +212,10 @@ func (d *Database) Set(key []byte, value []byte) error {
 }
 
 func (d *Database) Clear(key []byte) error {
+	if d.d == nil {
+		return &Error{errorClientInvalidOperation}
+	}
+
 	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
 		tr.Clear(key)
 		return nil, nil
@@ -183,6 +227,10 @@ func (d *Database) Clear(key []byte) error {
 }
 
 func (d *Database) ClearRange(begin []byte, end []byte) error {
+	if d.d == nil {
+		return &Error{errorClientInvalidOperation}
+	}
+
 	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
 		tr.ClearRange(begin, end)
 		return nil, nil
@@ -194,6 +242,10 @@ func (d *Database) ClearRange(begin []byte, end []byte) error {
 }
 
 func (d *Database) ClearRangeStartsWith(prefix []byte) error {
+	if d.d == nil {
+		return &Error{errorClientInvalidOperation}
+	}
+
 	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
 		tr.ClearRangeStartsWith(prefix)
 		return nil, nil
@@ -205,6 +257,10 @@ func (d *Database) ClearRangeStartsWith(prefix []byte) error {
 }
 
 func (d *Database) GetAndWatch(key []byte) ([]byte, *FutureNil, error) {
+	if d.d == nil {
+		return nil, nil, &Error{errorClientInvalidOperation}
+	}
+
 	r, e := d.Transact(func (tr *Transaction) (interface{}, error) {
 		v := tr.Get(key).GetOrPanic()
 		w := tr.Watch(key)
@@ -219,6 +275,10 @@ func (d *Database) GetAndWatch(key []byte) ([]byte, *FutureNil, error) {
 }
 
 func (d *Database) SetAndWatch(key []byte, value []byte) (*FutureNil, error) {
+	if d.d == nil {
+		return nil, &Error{errorClientInvalidOperation}
+	}
+
 	r, e := d.Transact(func (tr *Transaction) (interface{}, error) {
 		tr.Set(key, value)
 		return tr.Watch(key), nil
@@ -230,6 +290,10 @@ func (d *Database) SetAndWatch(key []byte, value []byte) (*FutureNil, error) {
 }
 
 func (d *Database) ClearAndWatch(key []byte) (*FutureNil, error) {
+	if d.d == nil {
+		return nil, &Error{errorClientInvalidOperation}
+	}
+
 	r, e := d.Transact(func (tr *Transaction) (interface{}, error) {
 		tr.Clear(key)
 		return tr.Watch(key), nil
