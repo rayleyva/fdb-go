@@ -109,3 +109,133 @@ func (d *Database) Transact(f func(tr *Transaction) (interface{}, error)) (ret i
 		}
 	}
 }
+
+func (d *Database) Get(key []byte) ([]byte, error) {
+	v, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		return tr.Get(key).GetOrPanic(), nil
+	})
+	if e != nil {
+		return nil, e
+	}
+	return v.([]byte), nil
+}
+
+func (d *Database) GetKey(sel KeySelector) ([]byte, error) {
+	v, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		return tr.GetKey(sel).GetOrPanic(), nil
+	})
+	if e != nil {
+		return nil, e
+	}
+	return v.([]byte), nil
+}
+
+func (d *Database) GetRange(begin []byte, end []byte, options RangeOptions) ([]KeyValue, error) {
+	v, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		return tr.GetRange(begin, end, options).GetSliceOrPanic(), nil
+	})
+	if e != nil {
+		return nil, e
+	}
+	return v.([]KeyValue), nil
+}
+
+func (d *Database) GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) ([]KeyValue, error) {
+	v, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		return tr.GetRangeSelector(begin, end, options).GetSliceOrPanic(), nil
+	})
+	if e != nil {
+		return nil, e
+	}
+	return v.([]KeyValue), nil
+}
+
+func (d *Database) GetRangeStartsWith(prefix []byte, options RangeOptions) ([]KeyValue, error) {
+	v, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		return tr.GetRangeStartsWith(prefix, options).GetSliceOrPanic(), nil
+	})
+	if e != nil {
+		return nil, e
+	}
+	return v.([]KeyValue), nil
+}
+
+func (d *Database) Set(key []byte, value []byte) error {
+	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		tr.Set(key, value)
+		return nil, nil
+	})
+	if e != nil {
+		return e
+	}
+	return nil
+}
+
+func (d *Database) Clear(key []byte) error {
+	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		tr.Clear(key)
+		return nil, nil
+	})
+	if e != nil {
+		return e
+	}
+	return nil
+}
+
+func (d *Database) ClearRange(begin []byte, end []byte) error {
+	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		tr.ClearRange(begin, end)
+		return nil, nil
+	})
+	if e != nil {
+		return e
+	}
+	return nil
+}
+
+func (d *Database) ClearRangeStartsWith(prefix []byte) error {
+	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		tr.ClearRangeStartsWith(prefix)
+		return nil, nil
+	})
+	if e != nil {
+		return e
+	}
+	return nil
+}
+
+func (d *Database) GetAndWatch(key []byte) ([]byte, *FutureNil, error) {
+	r, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		v := tr.Get(key).GetOrPanic()
+		w := tr.Watch(key)
+		return struct{value []byte; watch *FutureNil}{v, w}, nil
+		return nil, nil
+	})
+	if e != nil {
+		return nil, nil, e
+	}
+	ret := r.(struct{value []byte; watch *FutureNil})
+	return ret.value, ret.watch, nil
+}
+
+func (d *Database) SetAndWatch(key []byte, value []byte) (*FutureNil, error) {
+	r, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		tr.Set(key, value)
+		return tr.Watch(key), nil
+	})
+	if e != nil {
+		return nil, e
+	}
+	return r.(*FutureNil), nil
+}
+
+func (d *Database) ClearAndWatch(key []byte) (*FutureNil, error) {
+	r, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		tr.Clear(key)
+		return tr.Watch(key), nil
+	})
+	if e != nil {
+		return nil, e
+	}
+	return r.(*FutureNil), nil
+}
