@@ -115,7 +115,20 @@ func writeMutation(opt Option) {
 func (t *Transaction) %s(key []byte, param []byte) {
 	t.atomicOp(key, param, %d)
 }
-`, opt.Description, opt.ParamDesc, translateName(opt.Name), opt.Code)
+
+// %s
+// Parameter: %s
+func (d *Database) %s(key []byte, param []byte) error {
+	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		tr.%s(key, param)
+		return nil, nil
+	})
+	if e != nil {
+		return e
+	}
+	return nil
+}
+`, opt.Description, opt.ParamDesc, translateName(opt.Name), opt.Code, opt.Description, opt.ParamDesc, translateName(opt.Name), translateName(opt.Name))
 }
 
 func writeEnum(scope Scope, opt Option, delta int) {

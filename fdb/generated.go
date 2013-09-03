@@ -173,10 +173,36 @@ func (t *Transaction) Add(key []byte, param []byte) {
 	t.atomicOp(key, param, 2)
 }
 
+// Performs an addition of little-endian integers. If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``. The integers to be added must be stored in a little-endian representation.  They can be signed in two's complement representation or unsigned. You can add to an integer at a known offset in the value by prepending the appropriate number of zero bytes to ``param`` and padding with zero bytes to match the length of the value. However, this offset technique requires that you know the addition will not cause the integer field within the value to overflow.
+// Parameter: addend
+func (d *Database) Add(key []byte, param []byte) error {
+	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		tr.Add(key, param)
+		return nil, nil
+	})
+	if e != nil {
+		return e
+	}
+	return nil
+}
+
 // Performs a bitwise ``and`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
 // Parameter: value with which to perform bitwise and
 func (t *Transaction) And(key []byte, param []byte) {
 	t.atomicOp(key, param, 6)
+}
+
+// Performs a bitwise ``and`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
+// Parameter: value with which to perform bitwise and
+func (d *Database) And(key []byte, param []byte) error {
+	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		tr.And(key, param)
+		return nil, nil
+	})
+	if e != nil {
+		return e
+	}
+	return nil
 }
 
 // Performs a bitwise ``or`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
@@ -185,10 +211,36 @@ func (t *Transaction) Or(key []byte, param []byte) {
 	t.atomicOp(key, param, 7)
 }
 
+// Performs a bitwise ``or`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
+// Parameter: value with which to perform bitwise or
+func (d *Database) Or(key []byte, param []byte) error {
+	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		tr.Or(key, param)
+		return nil, nil
+	})
+	if e != nil {
+		return e
+	}
+	return nil
+}
+
 // Performs a bitwise ``xor`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
 // Parameter: value with which to perform bitwise xor
 func (t *Transaction) Xor(key []byte, param []byte) {
 	t.atomicOp(key, param, 8)
+}
+
+// Performs a bitwise ``xor`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
+// Parameter: value with which to perform bitwise xor
+func (d *Database) Xor(key []byte, param []byte) error {
+	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+		tr.Xor(key, param)
+		return nil, nil
+	})
+	if e != nil {
+		return e
+	}
+	return nil
 }
 
 type ConflictRangeType int
