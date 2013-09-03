@@ -53,7 +53,7 @@ func fdb_future_block_until_ready(f *C.FDBFuture) {
 		return
 	}
 
-	ch := make(chan struct{})
+	ch := make(chan struct{}, 1)
 	C.go_set_callback(unsafe.Pointer(f), unsafe.Pointer(&ch))
 	<-ch
 }
