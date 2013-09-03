@@ -37,6 +37,7 @@ type ReadTransaction interface {
 	GetRange(begin []byte, end []byte, options RangeOptions) *RangeResult
 	GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) *RangeResult
 	GetRangeStartsWith(prefix []byte, options RangeOptions) *RangeResult
+	GetReadVersion() *FutureVersion
 }
 
 type Transaction struct {
@@ -135,6 +136,12 @@ func (t *Transaction) GetRangeStartsWith(prefix []byte, options RangeOptions) *R
 	return t.getRangeSelector(FirstGreaterOrEqual(prefix), FirstGreaterOrEqual(strinc(prefix)), options, false)
 }
 
+func (t *Transaction) GetReadVersion() *FutureVersion {
+	v := &FutureVersion{future: future{f: C.fdb_transaction_get_read_version(t.t)}}
+	runtime.SetFinalizer(v, (*FutureVersion).destroy)
+	return v
+}
+
 func (t *Transaction) Set(key []byte, value []byte) {
 	C.fdb_transaction_set(t.t, byteSliceToPtr(key), C.int(len(key)), byteSliceToPtr(value), C.int(len(value)))
 }
@@ -230,4 +237,8 @@ func (s *Snapshot) GetRange(begin []byte, end []byte, options RangeOptions) *Ran
 
 func (s *Snapshot) GetRangeStartsWith(prefix []byte, options RangeOptions) *RangeResult {
 	return s.t.getRangeSelector(FirstGreaterOrEqual(prefix), FirstGreaterOrEqual(strinc(prefix)), options, true)
+}
+
+func (s *Snapshot) GetReadVersion() *FutureVersion {
+	return s.t.GetReadVersion()
 }

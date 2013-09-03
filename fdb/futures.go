@@ -229,3 +229,28 @@ func (f *FutureKeyValueArray) GetOrPanic() ([]KeyValue, bool) {
 	}
 	return kvs, more
 }
+
+type FutureVersion struct {
+	future
+}
+
+func (v *FutureVersion) destroy() {
+	C.fdb_future_destroy(v.f)
+}
+
+func (v *FutureVersion) GetWithError() (int64, error) {
+	v.BlockUntilReady()
+	var ver C.int64_t
+	if err := C.fdb_future_get_version(v.f, &ver); err != 0 {
+		return 0, Error{Code: err}
+	}
+	return int64(ver), nil
+}
+
+func (v *FutureVersion) GetOrPanic() int64 {
+	val, err := v.GetWithError()
+	if err != nil {
+		panic(err)
+	}
+	return val
+}
