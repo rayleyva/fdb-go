@@ -46,6 +46,10 @@ type Error struct {
 	Code C.fdb_error_t
 }
 
+func NewError(i int) Error {
+	return Error{Code: C.fdb_error_t(i)}
+}
+
 func (e Error) Error() string {
 	return fmt.Sprintf("%s (%d)", C.GoString(C.fdb_get_error(e.Code)), e.Code)
 }
