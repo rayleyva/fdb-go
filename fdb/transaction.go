@@ -63,6 +63,10 @@ func (t *Transaction) destroy() {
 	C.fdb_transaction_destroy(t.t)
 }
 
+func (t *Transaction) Transact(f func (tr *Transaction) (interface{}, error)) (interface{}, error) {
+	return f(t)
+}
+
 func (t *Transaction) Cancel() {
 	if t.t != nil {
 		C.fdb_transaction_cancel(t.t)

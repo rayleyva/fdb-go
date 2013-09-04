@@ -48,6 +48,10 @@ type Error struct {
 	code C.fdb_error_t
 }
 
+type Transacter interface {
+	Transact(func (tr *Transaction) (interface{}, error)) (interface{}, error)
+}
+
 // Code returns the error code specific to this error (see
 // https://foundationdb.com/documentation/api-error-codes.html)
 func (e *Error) Code() int {
