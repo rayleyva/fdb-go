@@ -31,16 +31,21 @@ import (
 	"runtime"
 )
 
+// Database is a handle to a FoundationDB database. Although Database
+// provides convenience methods for reading and writing data,
+// modifications to a database are usually made via transactions,
+// which are usually created and committed automatically by the
+// Transact method.
 type Database struct {
 	d *C.FDBDatabase
-	Options databaseOptions
+	Options DatabaseOptions
 }
 
-type databaseOptions struct {
+type DatabaseOptions struct {
 	database *Database
 }
 
-func (opt databaseOptions) setOpt(code int, param []byte) error {
+func (opt DatabaseOptions) setOpt(code int, param []byte) error {
 	if opt.database == nil {
 		return &Error{errorClientInvalidOperation}
 	}
@@ -54,6 +59,9 @@ func (d *Database) destroy() {
 	C.fdb_database_destroy(d.d)
 }
 
+// CreateTransaction returns a new FoundationDB transaction. It is
+// generally preferable to use the Transact method, which handles
+// committing a transaction with appropriate retry behavior.
 func (d *Database) CreateTransaction() (*Transaction, error) {
 	if d.d == nil {
 		return nil, &Error{errorClientInvalidOperation}
@@ -73,6 +81,17 @@ func (d *Database) CreateTransaction() (*Transaction, error) {
 	return t, nil
 }
 
+// Transact runs a caller-provided function inside a retry loop,
+// providing it with a newly created transaction. After the function
+// returns, the transaction will be committed automatically. Any error
+// during execution of the caller's function or the commit will cause
+// the entire transaction to be retried or, if fatal, return the error
+// to the caller.
+//
+// When working with fdb Future objects in a transactional function,
+// it is easiest to use the GetOrPanic method, rather than
+// GetWithError. The Transact method will recover a panicked fdb.Error
+// and retry the transaction or return the error, as appropriate.
 func (d *Database) Transact(f func(tr *Transaction) (interface{}, error)) (ret interface{}, e error) {
 	if d.d == nil {
 		return nil, &Error{errorClientInvalidOperation}

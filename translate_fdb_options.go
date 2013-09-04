@@ -27,18 +27,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"unicode"
-	"unicode/utf8"
 	"os"
 )
-
-func lowerFirst (s string) string {
-	if s == "" {
-		return ""
-	}
-	r, n := utf8.DecodeRuneInString(s)
-	return string(unicode.ToLower(r)) + s[n:]
-}
 
 type Option struct {
 	Name string `xml:"name,attr"`
@@ -180,7 +170,7 @@ func int64ToBytes(i int64) ([]byte, error) {
 
 	for _, scope := range(v.Scope) {
 		if strings.HasSuffix(scope.Name, "Option") {
-			receiver := lowerFirst(scope.Name) + "s"
+			receiver := scope.Name + "s"
 
 			for _, opt := range(scope.Option) {
 				if opt.Description != "Deprecated" { // Eww
@@ -201,6 +191,11 @@ func int64ToBytes(i int64) ([]byte, error) {
 		var d int
 		if scope.Name == "StreamingMode" {
 			d = 1
+		}
+
+		// ConflictRangeType shouldn't be exported
+		if scope.Name == "ConflictRangeType" {
+			scope.Name = "conflictRangeType"
 		}
 
 		fmt.Printf(`

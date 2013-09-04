@@ -70,13 +70,19 @@ func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte) error {
 	return nil
 }
 
-type networkOptions struct{}
+type NetworkOptions struct {
+	apiVersion int
+}
 
-func (opt networkOptions) setOpt(code int, param []byte) error {
+// Options is a singleton value exposing options which affect the
+// entire FoundationDB client.
+var Options NetworkOptions
+
+func (opt NetworkOptions) setOpt(code int, param []byte) error {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
-	if apiVersion == 0 {
+	if Options.apiVersion == 0 {
 		return &Error{errorApiVersionUnset}
 	}
 
@@ -87,13 +93,15 @@ func (opt networkOptions) setOpt(code int, param []byte) error {
 
 // APIVersion determines the runtime behavior the fdb package. If the
 // requested version is not supported by both the fdb package and the
-// FoundationDB C library, an error will be returned. You must call
-// this function prior to any other functions in the fdb package.
+// FoundationDB C library, an error will be returned. APIVersion must
+// be called prior to any other functions in the fdb package.
+//
+// Currently, the only API version supported is 100.
 func APIVersion(version int) error {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
-	if apiVersion != 0 {
+	if Options.apiVersion != 0 {
 		return &Error{errorApiVersionAlreadySet}
 	}
 
@@ -109,12 +117,11 @@ func APIVersion(version int) error {
 		return &Error{e}
 	}
 
-	apiVersion = version
+	Options.apiVersion = version
 
 	return nil
 }
 
-var apiVersion int
 var networkStarted bool
 var networkMutex sync.Mutex
 
@@ -138,30 +145,45 @@ func startNetwork() error {
 	return nil
 }
 
+// StartNetwork initializes the FoundationDB client networking
+// engine. It is not necessary to call StartNetwork when using the
+// Open or OpenDefault functions to obtain a database
+// handle. StartNetwork must not be called more than once.
 func StartNetwork() error {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
-	if apiVersion == 0 {
+	if Options.apiVersion == 0 {
 		return &Error{errorApiVersionUnset}
 	}
 
 	return startNetwork()
 }
 
-// DefaultClusterFile allows the FoundationDB C library to select the
-// platform-appropriate default cluster file on your system.
+// DefaultClusterFile should be passed to Open or CreateCluster to
+// allow the FoundationDB C library to select the platform-appropriate
+// default cluster file on the current machine.
 const DefaultClusterFile string = ""
 
+// OpenDefault returns a database handle to the default database from
+// the FoundationDB cluster identified by the DefaultClusterFile on
+// the current machine. The FoundationDB client networking engine will
+// be initialized first, if necessary.
 func OpenDefault() (db *Database, e error) {
 	return Open(DefaultClusterFile, "DB")
 }
 
+// Open returns a database handle to the named database from the
+// FoundationDB cluster identified by the provided cluster file and
+// database name. The FoundationDB client networking engine will be
+// initialized first, if necessary.
+//
+// In the current release, the database name must be "DB".
 func Open(clusterFile string, dbName string) (db *Database, e error) {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
-	if apiVersion == 0 {
+	if Options.apiVersion == 0 {
 		return nil, &Error{errorApiVersionUnset}
 	}
 
@@ -217,12 +239,18 @@ func createCluster(clusterFile string) (*Cluster, error) {
 	return c, nil
 }
 
+// CreateCluster returns a cluster handle to the FoundationDB cluster
+// identified by the provided cluster file.
 func CreateCluster(clusterFile string) (*Cluster, error) {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
-	if apiVersion == 0 {
+	if Options.apiVersion == 0 {
 		return nil, &Error{errorApiVersionUnset}
+	}
+
+	if !networkStarted {
+		return nil, &Error{errorNetworkNotSetup}
 	}
 
 	return createCluster(clusterFile)

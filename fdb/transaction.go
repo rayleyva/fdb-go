@@ -42,14 +42,14 @@ type ReadTransaction interface {
 
 type Transaction struct {
 	t *C.FDBTransaction
-	Options transactionOptions
+	Options TransactionOptions
 }
 
-type transactionOptions struct {
+type TransactionOptions struct {
 	transaction *Transaction
 }
 
-func (opt transactionOptions) setOpt(code int, param []byte) error {
+func (opt TransactionOptions) setOpt(code int, param []byte) error {
 	if opt.transaction == nil {
 		return &Error{errorClientInvalidOperation}
 	}
@@ -225,7 +225,7 @@ func (t *Transaction) atomicOp(key []byte, param []byte, code int) {
 	}
 }
 
-func (t *Transaction) addConflictRange(begin []byte, end []byte, crtype ConflictRangeType) error {
+func (t *Transaction) addConflictRange(begin []byte, end []byte, crtype conflictRangeType) error {
 	if t.t == nil {
 		return &Error{errorClientInvalidOperation}
 	}
@@ -238,19 +238,19 @@ func (t *Transaction) addConflictRange(begin []byte, end []byte, crtype Conflict
 }
 
 func (t *Transaction) AddReadConflictRange(begin []byte, end []byte) error {
-	return t.addConflictRange(begin, end, ConflictRangeTypeRead)
+	return t.addConflictRange(begin, end, conflictRangeTypeRead)
 }
 
 func (t *Transaction) AddReadConflictKey(key []byte) error {
-	return t.addConflictRange(key, append(key, 0x00), ConflictRangeTypeRead)
+	return t.addConflictRange(key, append(key, 0x00), conflictRangeTypeRead)
 }
 
 func (t *Transaction) AddWriteConflictRange(begin []byte, end []byte) error {
-	return t.addConflictRange(begin, end, ConflictRangeTypeWrite)
+	return t.addConflictRange(begin, end, conflictRangeTypeWrite)
 }
 
 func (t *Transaction) AddWriteConflictKey(key []byte) error {
-	return t.addConflictRange(key, append(key, 0x00), ConflictRangeTypeWrite)
+	return t.addConflictRange(key, append(key, 0x00), conflictRangeTypeWrite)
 }
 
 type Snapshot struct {

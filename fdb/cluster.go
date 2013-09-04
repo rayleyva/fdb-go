@@ -31,6 +31,9 @@ import (
 	"runtime"
 )
 
+// Cluster is a handle to a FoundationDB cluster. It is generally
+// preferable to use Open or OpenDefault to obtain a database handle
+// directly.
 type Cluster struct {
 	c *C.FDBCluster
 }
@@ -39,6 +42,11 @@ func (c *Cluster) destroy() {
 	C.fdb_cluster_destroy(c.c)
 }
 
+// OpenDatabase returns a database handle from the FoundationDB
+// cluster. It is generally preferable to use Open or OpenDefault to
+// obtain a database handle directly.
+//
+// In the current release, the database name must be "DB".
 func (c *Cluster) OpenDatabase(dbName string) (*Database, error) {
 	if c.c == nil {
 		return nil, &Error{errorClientInvalidOperation}

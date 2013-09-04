@@ -24,13 +24,13 @@ func int64ToBytes(i int64) ([]byte, error) {
 
 // Enables trace output to a file in a directory of the clients choosing
 // Parameter: path to output directory (or NULL for current working directory)
-func (opt networkOptions) SetTraceEnable(param string) error {
+func (opt NetworkOptions) SetTraceEnable(param string) error {
 	return opt.setOpt(30, []byte(param))
 }
 
 // Set the size of the client location cache. Raising this value can boost performance in very large databases where clients access data in a near-random pattern. Defaults to 100000.
 // Parameter: Max location cache entries
-func (opt databaseOptions) SetLocationCacheSize(param int64) error {
+func (opt DatabaseOptions) SetLocationCacheSize(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
 		return e
@@ -40,7 +40,7 @@ func (opt databaseOptions) SetLocationCacheSize(param int64) error {
 
 // Set the maximum number of watches allowed to be outstanding on a database connection. Increasing this number could result in increased resource usage. Reducing this number will not cancel any outstanding watches. Defaults to 10000 and cannot be larger than 1000000.
 // Parameter: Max outstanding watches
-func (opt databaseOptions) SetMaxWatches(param int64) error {
+func (opt DatabaseOptions) SetMaxWatches(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
 		return e
@@ -50,88 +50,88 @@ func (opt databaseOptions) SetMaxWatches(param int64) error {
 
 // Specify the machine ID that was passed to fdbserver processes running on the same machine as this client, for better location-aware load balancing.
 // Parameter: Hexadecimal ID
-func (opt databaseOptions) SetMachineId(param string) error {
+func (opt DatabaseOptions) SetMachineId(param string) error {
 	return opt.setOpt(21, []byte(param))
 }
 
 // Specify the datacenter ID that was passed to fdbserver processes running in the same datacenter as this client, for better location-aware load balancing.
 // Parameter: Hexadecimal ID
-func (opt databaseOptions) SetDatacenterId(param string) error {
+func (opt DatabaseOptions) SetDatacenterId(param string) error {
 	return opt.setOpt(22, []byte(param))
 }
 
 // The transaction, if not self-conflicting, may be committed a second time after commit succeeds, in the event of a fault
-func (opt transactionOptions) SetCausalWriteRisky() error {
+func (opt TransactionOptions) SetCausalWriteRisky() error {
 	return opt.setOpt(10, nil)
 }
 
 // The read version will be committed, and usually will be the latest committed, but might not be the latest committed in the event of a fault or partition
-func (opt transactionOptions) SetCausalReadRisky() error {
+func (opt TransactionOptions) SetCausalReadRisky() error {
 	return opt.setOpt(20, nil)
 }
 
-func (opt transactionOptions) SetCausalReadDisable() error {
+func (opt TransactionOptions) SetCausalReadDisable() error {
 	return opt.setOpt(21, nil)
 }
 
 // The next write performed on this transaction will not generate a write conflict range. As a result, other transactions which read the key(s) being modified by the next write will not conflict with this transaction. Care needs to be taken when using this option on a transaction that is shared between multiple threads. When setting this option, write conflict ranges will be disabled on the next write operation, regardless of what thread it is on.
-func (opt transactionOptions) SetNextWriteNoWriteConflictRange() error {
+func (opt TransactionOptions) SetNextWriteNoWriteConflictRange() error {
 	return opt.setOpt(30, nil)
 }
 
-func (opt transactionOptions) SetCheckWritesEnable() error {
+func (opt TransactionOptions) SetCheckWritesEnable() error {
 	return opt.setOpt(50, nil)
 }
 
 // Reads performed by a transaction will not see any prior mutations that occured in that transaction, instead seeing the value which was in the database at the transaction's read version. This option may provide a small performance benefit for the client, but also disables a number of client-side optimizations which are beneficial for transactions which tend to read and write the same keys within a single transaction. Also note that with this option invoked any outstanding reads will return errors when transaction commit is called (rather than the normal behavior of commit waiting for outstanding reads to complete).
-func (opt transactionOptions) SetReadYourWritesDisable() error {
+func (opt TransactionOptions) SetReadYourWritesDisable() error {
 	return opt.setOpt(51, nil)
 }
 
 // Disables read-ahead caching for range reads. Under normal operation, a transaction will read extra rows from the database into cache if range reads are used to page through a series of data one row at a time (i.e. if a range read with a one row limit is followed by another one row range read starting immediately after the result of the first).
-func (opt transactionOptions) SetReadAheadDisable() error {
+func (opt TransactionOptions) SetReadAheadDisable() error {
 	return opt.setOpt(52, nil)
 }
 
-func (opt transactionOptions) SetDurabilityDatacenter() error {
+func (opt TransactionOptions) SetDurabilityDatacenter() error {
 	return opt.setOpt(110, nil)
 }
 
-func (opt transactionOptions) SetDurabilityRisky() error {
+func (opt TransactionOptions) SetDurabilityRisky() error {
 	return opt.setOpt(120, nil)
 }
 
-func (opt transactionOptions) SetDurabilityDevNullIsWebScale() error {
+func (opt TransactionOptions) SetDurabilityDevNullIsWebScale() error {
 	return opt.setOpt(130, nil)
 }
 
 // Specifies that this transaction should be treated as highest priority and that lower priority transactions should block behind this one. Use is discouraged outside of low-level tools
-func (opt transactionOptions) SetPrioritySystemImmediate() error {
+func (opt TransactionOptions) SetPrioritySystemImmediate() error {
 	return opt.setOpt(200, nil)
 }
 
 // Specifies that this transaction should be treated as low priority and that default priority transactions should be processed first. Useful for doing batch work simultaneously with latency-sensitive work
-func (opt transactionOptions) SetPriorityBatch() error {
+func (opt TransactionOptions) SetPriorityBatch() error {
 	return opt.setOpt(201, nil)
 }
 
 // This is a write-only transaction which sets the initial configuration
-func (opt transactionOptions) SetInitializeNewDatabase() error {
+func (opt TransactionOptions) SetInitializeNewDatabase() error {
 	return opt.setOpt(300, nil)
 }
 
 // Allows this transaction to read and modify system keys (those that start with the byte 0xFF)
-func (opt transactionOptions) SetAccessSystemKeys() error {
+func (opt TransactionOptions) SetAccessSystemKeys() error {
 	return opt.setOpt(301, nil)
 }
 
-func (opt transactionOptions) SetDebugDump() error {
+func (opt TransactionOptions) SetDebugDump() error {
 	return opt.setOpt(400, nil)
 }
 
 // Set a timeout in milliseconds which, when elapsed, will cause the transaction automatically to be cancelled. Valid parameter values are ``[0, INT_MAX]``. If set to 0, will disable all timeouts. All pending and any future uses of the transaction will throw an exception. The transaction can be used again after it is reset.
 // Parameter: value in milliseconds of timeout
-func (opt transactionOptions) SetTimeout(param int64) error {
+func (opt TransactionOptions) SetTimeout(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
 		return e
@@ -141,7 +141,7 @@ func (opt transactionOptions) SetTimeout(param int64) error {
 
 // Set a maximum number of retries after which additional calls to onError will throw the most recently seen error code. Valid parameter values are ``[-1, INT_MAX]``. If set to -1, will disable the retry limit.
 // Parameter: number of times to retry
-func (opt transactionOptions) SetRetryLimit(param int64) error {
+func (opt TransactionOptions) SetRetryLimit(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
 		return e
@@ -243,10 +243,10 @@ func (d *Database) Xor(key []byte, param []byte) error {
 	return nil
 }
 
-type ConflictRangeType int
+type conflictRangeType int
 const (
 	// Used to add a read conflict range
-	ConflictRangeTypeRead ConflictRangeType = 0
+	conflictRangeTypeRead conflictRangeType = 0
 	// Used to add a write conflict range
-	ConflictRangeTypeWrite ConflictRangeType = 1
+	conflictRangeTypeWrite conflictRangeType = 1
 )
