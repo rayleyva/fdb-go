@@ -84,22 +84,30 @@ func (t *Transaction) Snapshot() *Snapshot {
 }
 
 func (t *Transaction) OnError(e *Error) *FutureNil {
-	// FIXME: if t.t == nil we want to return a Future that will act like Error{errorClientInvalidOperation}
+	if t.t == nil {
+		return &FutureNil{}
+	}
 	return makeFutureNil(C.fdb_transaction_on_error(t.t, e.code))
 }
 
 func (t *Transaction) Commit() *FutureNil {
-	// FIXME: if t.t == nil we want to return a Future that will act like Error{errorClientInvalidOperation}
+	if t.t == nil {
+		return &FutureNil{}
+	}
 	return makeFutureNil(C.fdb_transaction_commit(t.t))
 }
 
 func (t *Transaction) Watch(key []byte) *FutureNil {
-	// FIXME: if t.t == nil we want to return a Future that will act like Error{errorClientInvalidOperation}
+	if t.t == nil {
+		return &FutureNil{}
+	}
 	return makeFutureNil(C.fdb_transaction_watch(t.t, byteSliceToPtr(key), C.int(len(key))))
 }
 
 func (t *Transaction) get(key []byte, snapshot int) *FutureValue {
-	// FIXME: if t.t == nil we want to return a Future that will act like Error{errorClientInvalidOperation}
+	if t.t == nil {
+		return &FutureValue{}
+	}
 	v := &FutureValue{future: future{f: C.fdb_transaction_get(t.t, byteSliceToPtr(key), C.int(len(key)), C.fdb_bool_t(snapshot))}}
 	runtime.SetFinalizer(v, (*FutureValue).destroy)
 	return v
@@ -110,7 +118,9 @@ func (t *Transaction) Get(key []byte) *FutureValue {
 }
 
 func (t *Transaction) doGetRange(begin KeySelector, end KeySelector, options RangeOptions, snapshot bool, iteration int) *FutureKeyValueArray {
-	// FIXME: if t.t == nil we want to return a Future that will act like Error{errorClientInvalidOperation}
+	if t.t == nil {
+		return &FutureKeyValueArray{}
+	}
 	f := &FutureKeyValueArray{future: future{f: C.fdb_transaction_get_range(t.t, byteSliceToPtr(begin.Key), C.int(len(begin.Key)), C.fdb_bool_t(boolToInt(begin.OrEqual)), C.int(begin.Offset), byteSliceToPtr(end.Key), C.int(len(end.Key)), C.fdb_bool_t(boolToInt(end.OrEqual)), C.int(end.Offset), C.int(options.Limit), C.int(0), C.FDBStreamingMode(options.Mode-1), C.int(iteration), C.fdb_bool_t(boolToInt(snapshot)), C.fdb_bool_t(boolToInt(options.Reverse)))}}
 	runtime.SetFinalizer(f, (*FutureKeyValueArray).destroy)
 	return f
@@ -154,31 +164,41 @@ func (t *Transaction) GetRangeStartsWith(prefix []byte, options RangeOptions) *R
 }
 
 func (t *Transaction) GetReadVersion() *FutureVersion {
-	// FIXME: if t.t == nil we want to return a Future that will act like Error{errorClientInvalidOperation}
+	if t.t == nil {
+		return &FutureVersion{}
+	}
 	v := &FutureVersion{future: future{f: C.fdb_transaction_get_read_version(t.t)}}
 	runtime.SetFinalizer(v, (*FutureVersion).destroy)
 	return v
 }
 
 func (t *Transaction) Set(key []byte, value []byte) {
+	// If t.t is nil, then you'll get an error when you try to Commit
+	// this transaction anyway
 	if t.t != nil {
 		C.fdb_transaction_set(t.t, byteSliceToPtr(key), C.int(len(key)), byteSliceToPtr(value), C.int(len(value)))
 	}
 }
 
 func (t *Transaction) Clear(key []byte) {
+	// If t.t is nil, then you'll get an error when you try to Commit
+	// this transaction anyway
 	if t.t != nil {
 		C.fdb_transaction_clear(t.t, byteSliceToPtr(key), C.int(len(key)))
 	}
 }
 
 func (t *Transaction) ClearRange(begin []byte, end []byte) {
+	// If t.t is nil, then you'll get an error when you try to Commit
+	// this transaction anyway
 	if t.t != nil {
 		C.fdb_transaction_clear_range(t.t, byteSliceToPtr(begin), C.int(len(begin)), byteSliceToPtr(end), C.int(len(end)))
 	}
 }
 
 func (t *Transaction) ClearRangeStartsWith(prefix []byte) {
+	// If t.t is nil, then you'll get an error when you try to Commit
+	// this transaction anyway
 	if t.t != nil {
 		C.fdb_transaction_clear_range(t.t, byteSliceToPtr(prefix), C.int(len(prefix)), byteSliceToPtr(strinc(prefix)), C.int(len(prefix)))
 	}
@@ -199,6 +219,8 @@ func (t *Transaction) GetCommittedVersion() (int64, error) {
 }
 
 func (t *Transaction) Reset() {
+	// If t.t is nil, then you'll get an error when you try to Commit
+	// this transaction anyway
 	if t.t != nil {
 		C.fdb_transaction_reset(t.t)
 	}
@@ -213,7 +235,9 @@ func boolToInt(b bool) int {
 }
 
 func (t *Transaction) getKey(sel KeySelector, snapshot int) *FutureKey {
-	// FIXME: if t.t == nil we want to return a Future that will act like Error{errorClientInvalidOperation}
+	if t.t == nil {
+		return &FutureKey{}
+	}
 	k := &FutureKey{future: future{f: C.fdb_transaction_get_key(t.t, byteSliceToPtr(sel.Key), C.int(len(sel.Key)), C.fdb_bool_t(boolToInt(sel.OrEqual)), C.int(sel.Offset), C.fdb_bool_t(snapshot))}}
 	runtime.SetFinalizer(k, (*FutureKey).destroy)
 	return k
@@ -224,6 +248,8 @@ func (t *Transaction) GetKey(sel KeySelector) *FutureKey {
 }
 
 func (t *Transaction) atomicOp(key []byte, param []byte, code int) {
+	// If t.t is nil, then you'll get an error when you try to Commit
+	// this transaction anyway
 	if t.t != nil {
 		C.fdb_transaction_atomic_op(t.t, byteSliceToPtr(key), C.int(len(key)), byteSliceToPtr(param), C.int(len(param)), C.FDBMutationType(code))
 	}
@@ -262,31 +288,31 @@ type Snapshot struct {
 }
 
 func (s *Snapshot) Get(key []byte) *FutureValue {
-	// FIXME: something should be checked, surely?
+	// Sanity checked by Transaction.get
 	return s.t.get(key, 1)
 }
 
 func (s *Snapshot) GetKey(sel KeySelector) *FutureKey {
-	// FIXME: something should be checked, surely?
+	// Sanity checked by Transaction.get
 	return s.t.getKey(sel, 1)
 }
 
 func (s *Snapshot) GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) *RangeResult {
-	// FIXME: something should be checked, surely?
+	// Sanity checked by Transaction.get
 	return s.t.getRangeSelector(begin, end, options, true)
 }
 
 func (s *Snapshot) GetRange(begin []byte, end []byte, options RangeOptions) *RangeResult {
-	// FIXME: something should be checked, surely?
+	// Sanity checked by Transaction.get
 	return s.t.getRangeSelector(FirstGreaterOrEqual(begin), FirstGreaterOrEqual(end), options, true)
 }
 
 func (s *Snapshot) GetRangeStartsWith(prefix []byte, options RangeOptions) *RangeResult {
-	// FIXME: something should be checked, surely?
+	// Sanity checked by Transaction.get
 	return s.t.getRangeSelector(FirstGreaterOrEqual(prefix), FirstGreaterOrEqual(strinc(prefix)), options, true)
 }
 
 func (s *Snapshot) GetReadVersion() *FutureVersion {
-	// FIXME: something should be checked, surely?
+	// Sanity checked by Transaction.get
 	return s.t.GetReadVersion()
 }

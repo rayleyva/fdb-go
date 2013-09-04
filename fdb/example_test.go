@@ -26,11 +26,11 @@ import (
 	"github.com/FoundationDB/fdb-go/fdb"
 )
 
-func ExampleTransacter() {
+func ExampleTransactor() {
 	_ = fdb.APIVersion(100)
 	db, _ := fdb.OpenDefault()
 
-	setOne := func(transacter fdb.Transacter, key []byte, value []byte) {
+	setOne := func(transacter fdb.Transactor, key []byte, value []byte) {
 		fmt.Printf("%T\n", transacter)
 		transacter.Transact(func(tr *fdb.Transaction) (interface{}, error) {
 			tr.Set(key, value)
@@ -38,7 +38,7 @@ func ExampleTransacter() {
 		})
 	}
 
-	setMany := func(transacter fdb.Transacter, value []byte, keys ...[]byte) {
+	setMany := func(transacter fdb.Transactor, value []byte, keys ...[]byte) {
 		fmt.Printf("%T\n", transacter)
 		transacter.Transact(func(tr *fdb.Transaction) (interface{}, error) {
 			for _, key := range(keys) {

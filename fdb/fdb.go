@@ -48,7 +48,11 @@ type Error struct {
 	code C.fdb_error_t
 }
 
-type Transacter interface {
+// A Transactor represents an object that can execute a transactional
+// function. Functions that accept a Transactor can be called with
+// either a Database or a Transaction to enable transactional
+// composition.
+type Transactor interface {
 	Transact(func (tr *Transaction) (interface{}, error)) (interface{}, error)
 }
 
