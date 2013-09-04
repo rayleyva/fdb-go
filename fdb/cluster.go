@@ -39,12 +39,12 @@ func (c *Cluster) destroy() {
 	C.fdb_cluster_destroy(c.c)
 }
 
-func (c *Cluster) OpenDatabase(dbname []byte) (*Database, error) {
+func (c *Cluster) OpenDatabase(dbName string) (*Database, error) {
 	if c.c == nil {
 		return nil, &Error{errorClientInvalidOperation}
 	}
 
-	f := C.fdb_cluster_create_database(c.c, byteSliceToPtr(dbname), C.int(len(dbname)))
+	f := C.fdb_cluster_create_database(c.c, byteSliceToPtr([]byte(dbName)), C.int(len([]byte(dbName))))
 	fdb_future_block_until_ready(f)
 
 	var outd *C.FDBDatabase

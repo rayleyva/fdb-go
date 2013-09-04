@@ -499,15 +499,15 @@ func (sm *StackMachine) Run() {
 	sm.threads.Wait()
 }
 
-var config fdb.DBConfig
-
 var db *fdb.Database
 var dbAtomics map[string]func([]byte, []byte) error
+
+var clusterFile string
 
 func main() {
 	prefix := []byte(os.Args[1])
 	if len(os.Args) > 2 {
-		config.ClusterFile = os.Args[2]
+		clusterFile = os.Args[2]
 	}
 
 	var e error
@@ -517,8 +517,7 @@ func main() {
 		log.Fatal(e)
 	}
 
-	config.DBName = []byte("DB")
-	db, e = fdb.Open(&config)
+	db, e = fdb.Open(clusterFile, "DB")
 	if e != nil {
 		log.Fatal(e)
 	}

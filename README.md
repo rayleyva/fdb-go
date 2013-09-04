@@ -26,7 +26,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db, err := fdb.Open(nil)
+	db, err := fdb.OpenDefault()
 	if err != nil {
 		log.Fatal(err)
 	}

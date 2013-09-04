@@ -62,8 +62,6 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("%s (%d)", C.GoString(C.fdb_get_error(e.code)), e.code)
 }
 
-var apiVersion int
-
 func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte) error {
 	if err := setter(byteSliceToPtr(param), C.int(len(param))); err != 0 {
 		return &Error{err}
@@ -75,6 +73,9 @@ func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte) error {
 type networkOptions struct{}
 
 func (opt networkOptions) setOpt(code int, param []byte) error {
+	networkMutex.Lock()
+	defer networkMutex.Unlock()
+
 	if apiVersion == 0 {
 		return &Error{errorApiVersionUnset}
 	}
@@ -89,6 +90,9 @@ func (opt networkOptions) setOpt(code int, param []byte) error {
 // FoundationDB C library, an error will be returned. You must call
 // this function prior to any other functions in the fdb package.
 func APIVersion(version int) error {
+	networkMutex.Lock()
+	defer networkMutex.Unlock()
+
 	if apiVersion != 0 {
 		return &Error{errorApiVersionAlreadySet}
 	}
@@ -110,14 +114,19 @@ func APIVersion(version int) error {
 	return nil
 }
 
+var apiVersion int
 var networkStarted bool
 var networkMutex sync.Mutex
 
-func startNetwork() error {
-	if apiVersion == 0 {
-		return &Error{errorApiVersionUnset}
-	}
+var openClusters map[string]*Cluster
+var openDatabases map[string]*Database
 
+func init() {
+	openClusters = make(map[string]*Cluster)
+	openDatabases = make(map[string]*Database)
+}
+
+func startNetwork() error {
 	if e := C.fdb_setup_network(); e != 0 {
 		return &Error{e}
 	}
@@ -133,21 +142,28 @@ func StartNetwork() error {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
+	if apiVersion == 0 {
+		return &Error{errorApiVersionUnset}
+	}
+
 	return startNetwork()
 }
 
-type DBConfig struct {
-	ClusterFile string
-	DBName []byte
+// DefaultClusterFile allows the FoundationDB C library to select the
+// platform-appropriate default cluster file on your system.
+const DefaultClusterFile string = ""
+
+func OpenDefault() (db *Database, e error) {
+	return Open(DefaultClusterFile, "DB")
 }
 
-func Open(conf *DBConfig) (db *Database, e error) {
+func Open(clusterFile string, dbName string) (db *Database, e error) {
+	networkMutex.Lock()
+	defer networkMutex.Unlock()
+
 	if apiVersion == 0 {
 		return nil, &Error{errorApiVersionUnset}
 	}
-
-	networkMutex.Lock()
-	defer networkMutex.Unlock()
 
 	if !networkStarted {
 		e = startNetwork()
@@ -156,41 +172,32 @@ func Open(conf *DBConfig) (db *Database, e error) {
 		}
 	}
 
-	var cf *C.char
-	if conf != nil {
-		cf = C.CString(conf.ClusterFile)
-	}
-	f := C.fdb_create_cluster(cf)
-	fdb_future_block_until_ready(f)
-	outc := &C.FDBCluster{}
-	if err := C.fdb_future_get_cluster(f, &outc); err != 0 {
-		return nil, &Error{err}
-	}
-	C.fdb_future_destroy(f)
-	c := &Cluster{c: outc}
-	runtime.SetFinalizer(c, (*Cluster).destroy)
-
-	var dbname []byte
-	if conf == nil {
-		dbname = []byte("DB")
-	} else {
-		dbname = conf.DBName
+	cluster := openClusters[clusterFile]
+	if cluster == nil {
+		cluster, e = createCluster(clusterFile)
+		if e != nil {
+			return
+		}
+		openClusters[clusterFile] = cluster
 	}
 
-	db, e = c.OpenDatabase(dbname)
+	db = openDatabases[dbName]
+	if db == nil {
+		db, e = cluster.OpenDatabase(dbName)
+		if e != nil {
+			return
+		}
+		openDatabases[dbName] = db
+	}
 
 	return
 }
 
-func CreateCluster(cluster string) (*Cluster, error) {
-	if apiVersion == 0 {
-		return nil, &Error{errorApiVersionUnset}
-	}
-
+func createCluster(clusterFile string) (*Cluster, error) {
 	var cf *C.char
 
-	if len(cluster) != 0 {
-		cf = C.CString(cluster)
+	if len(clusterFile) != 0 {
+		cf = C.CString(clusterFile)
 	}
 
 	f := C.fdb_create_cluster(cf)
@@ -205,10 +212,20 @@ func CreateCluster(cluster string) (*Cluster, error) {
 	C.fdb_future_destroy(f)
 
 	c := &Cluster{c: outc}
-
 	runtime.SetFinalizer(c, (*Cluster).destroy)
 
 	return c, nil
+}
+
+func CreateCluster(clusterFile string) (*Cluster, error) {
+	networkMutex.Lock()
+	defer networkMutex.Unlock()
+
+	if apiVersion == 0 {
+		return nil, &Error{errorApiVersionUnset}
+	}
+
+	return createCluster(clusterFile)
 }
 
 func byteSliceToPtr(b []byte) *C.uint8_t {
