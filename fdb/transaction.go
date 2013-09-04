@@ -83,6 +83,12 @@ func (t *Transaction) Snapshot() *Snapshot {
 	return &Snapshot{t}
 }
 
+func makeFutureNil(f *C.FDBFuture) *FutureNil {
+	ret := &FutureNil{future: future{f: f}}
+	runtime.SetFinalizer(ret, (*FutureNil).destroy)
+	return ret
+}
+
 func (t *Transaction) OnError(e *Error) *FutureNil {
 	if t.t == nil {
 		return &FutureNil{}

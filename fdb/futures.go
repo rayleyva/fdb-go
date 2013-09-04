@@ -40,7 +40,6 @@ package fdb
 import "C"
 
 import (
-	"runtime"
 	"unsafe"
 )
 
@@ -111,21 +110,26 @@ func (v *FutureValue) GetWithError() ([]byte, error) {
 		return v.v, nil
 	}
 
-	fdb_future_block_until_ready(v.f)
-
 	var present C.fdb_bool_t
 	var value *C.uint8_t
 	var length C.int
+
+	fdb_future_block_until_ready(v.f)
 	if err := C.fdb_future_get_value(v.f, &present, &value, &length); err != 0 {
-		if err != 2017 {
+		if err == 2017 {
+			return v.v, nil
+		} else {
 			return nil, &Error{err}
 		}
 	}
+
 	if present != 0 {
 		v.v = C.GoBytes(unsafe.Pointer(value), length)
 	}
 	v.set = true
+
 	C.fdb_future_release_memory(v.f)
+
 	return v.v, nil
 }
 
@@ -155,17 +159,22 @@ func (k *FutureKey) GetWithError() ([]byte, error) {
 		return k.k, nil
 	}
 
-	fdb_future_block_until_ready(k.f)
-
 	var value *C.uint8_t
 	var length C.int
+
+	fdb_future_block_until_ready(k.f)
 	if err := C.fdb_future_get_key(k.f, &value, &length); err != 0 {
-		if err != 2017 {
+		if err == 2017 {
+			return k.k, nil
+		} else {
 			return nil, &Error{err}
 		}
 	}
+
 	k.k = C.GoBytes(unsafe.Pointer(value), length)
+
 	C.fdb_future_release_memory(k.f)
+
 	return k.k, nil
 }
 
@@ -179,12 +188,6 @@ func (k *FutureKey) GetOrPanic() []byte {
 
 type FutureNil struct {
 	future
-}
-
-func makeFutureNil(f *C.FDBFuture) *FutureNil {
-	ret := &FutureNil{future: future{f: f}}
-	runtime.SetFinalizer(ret, (*FutureNil).destroy)
-	return ret
 }
 
 func (f *FutureNil) destroy() {
