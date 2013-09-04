@@ -42,7 +42,7 @@ type RangeResult struct {
 	begin, end KeySelector
 	options RangeOptions
 	snapshot bool
-	f *FutureKeyValueArray
+	f *futureKeyValueArray
 }
 
 func (rr *RangeResult) GetSliceWithError() ([]KeyValue, error) {
@@ -93,7 +93,7 @@ func (rr *RangeResult) Iterator() *RangeIterator {
 
 type RangeIterator struct {
 	rr *RangeResult
-	f *FutureKeyValueArray
+	f *futureKeyValueArray
 	begin, end KeySelector
 	options RangeOptions
 	iteration int

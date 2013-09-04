@@ -195,11 +195,11 @@ func (f *FutureNil) GetOrPanic() {
 	}
 }
 
-type FutureKeyValueArray struct {
+type futureKeyValueArray struct {
 	future
 }
 
-func (f *FutureKeyValueArray) destroy() {
+func (f *futureKeyValueArray) destroy() {
 	C.fdb_future_destroy(f.f)
 }
 
@@ -220,7 +220,7 @@ func stringRefToSlice(ptr uintptr) []byte {
 	return ret
 }
 
-func (f *FutureKeyValueArray) GetWithError() ([]KeyValue, bool, error) {
+func (f *futureKeyValueArray) GetWithError() ([]KeyValue, bool, error) {
 	if f.f == nil {
 		return nil, false, &Error{errorClientInvalidOperation}
 	}
@@ -246,14 +246,6 @@ func (f *FutureKeyValueArray) GetWithError() ([]KeyValue, bool, error) {
 	}
 
  	return ret, (more != 0), nil
-}
-
-func (f *FutureKeyValueArray) GetOrPanic() ([]KeyValue, bool) {
-	kvs, more, err := f.GetWithError()
-	if err != nil {
-		panic(err)
-	}
-	return kvs, more
 }
 
 type FutureVersion struct {

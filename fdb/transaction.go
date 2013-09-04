@@ -117,12 +117,12 @@ func (t *Transaction) Get(key []byte) *FutureValue {
 	return t.get(key, 0)
 }
 
-func (t *Transaction) doGetRange(begin KeySelector, end KeySelector, options RangeOptions, snapshot bool, iteration int) *FutureKeyValueArray {
+func (t *Transaction) doGetRange(begin KeySelector, end KeySelector, options RangeOptions, snapshot bool, iteration int) *futureKeyValueArray {
 	if t.t == nil {
-		return &FutureKeyValueArray{}
+		return &futureKeyValueArray{}
 	}
-	f := &FutureKeyValueArray{future: future{f: C.fdb_transaction_get_range(t.t, byteSliceToPtr(begin.Key), C.int(len(begin.Key)), C.fdb_bool_t(boolToInt(begin.OrEqual)), C.int(begin.Offset), byteSliceToPtr(end.Key), C.int(len(end.Key)), C.fdb_bool_t(boolToInt(end.OrEqual)), C.int(end.Offset), C.int(options.Limit), C.int(0), C.FDBStreamingMode(options.Mode-1), C.int(iteration), C.fdb_bool_t(boolToInt(snapshot)), C.fdb_bool_t(boolToInt(options.Reverse)))}}
-	runtime.SetFinalizer(f, (*FutureKeyValueArray).destroy)
+	f := &futureKeyValueArray{future: future{f: C.fdb_transaction_get_range(t.t, byteSliceToPtr(begin.Key), C.int(len(begin.Key)), C.fdb_bool_t(boolToInt(begin.OrEqual)), C.int(begin.Offset), byteSliceToPtr(end.Key), C.int(len(end.Key)), C.fdb_bool_t(boolToInt(end.OrEqual)), C.int(end.Offset), C.int(options.Limit), C.int(0), C.FDBStreamingMode(options.Mode-1), C.int(iteration), C.fdb_bool_t(boolToInt(snapshot)), C.fdb_bool_t(boolToInt(options.Reverse)))}}
+	runtime.SetFinalizer(f, (*futureKeyValueArray).destroy)
 	return f
 }
 
