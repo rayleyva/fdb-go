@@ -93,11 +93,11 @@ func APIVersion(version int) error {
 		return &Error{errorApiVersionAlreadySet}
 	}
 
-	if apiVersion < 100 {
+	if version < 100 {
 		return &Error{errorApiVersionNotSupported}
 	}
 
-	if apiVersion > 100 {
+	if version > 100 {
 		return &Error{errorApiVersionNotSupported}
 	}
 
