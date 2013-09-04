@@ -58,22 +58,37 @@ func fdb_future_block_until_ready(f *C.FDBFuture) {
 	<-ch
 }
 
-func (f *future) BlockUntilReady() {
-	if f.f != nil {
-		fdb_future_block_until_ready(f.f)
+// BlockUntilReady blocks the calling goroutine until the future is
+// ready. A future becomes ready either when it receives a value of
+// its enclosed type (if any) or is set to an error state.
+func (future *future) BlockUntilReady() {
+	if future.f != nil {
+		fdb_future_block_until_ready(future.f)
 	}
 }
 
-func (f *future) IsReady() bool {
-	if f.f != nil {
-		return C.fdb_future_is_ready(f.f) != 0
+// IsReady returns true if the future is ready, and false otherwise,
+// without blocking. A future is ready either when has received a
+// value of its enclosed type (if any) or has been set to an error
+// state.
+func (future *future) IsReady() bool {
+	if future.f != nil {
+		return C.fdb_future_is_ready(future.f) != 0
 	}
 	return true
 }
 
-func (f *future) Cancel() {
-	if f.f != nil {
-		C.fdb_future_cancel(f.f)
+// Cancel cancels a future and its associated asynchronous
+// operation. If called before the future becomes ready, attempts to
+// access the future will return an error. Cancel has no effect if the
+// future is already ready.
+//
+// Note that even if a future is not ready, the associated
+// asynchronous operation may already have completed and be unable to
+// be cancelled.
+func (future *future) Cancel() {
+	if future.f != nil {
+		C.fdb_future_cancel(future.f)
 	}
 }
 
