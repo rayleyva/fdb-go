@@ -146,16 +146,20 @@ func (t *Transaction) GetRange(begin []byte, end []byte, options RangeOptions) *
 	return t.getRangeSelector(FirstGreaterOrEqual(begin), FirstGreaterOrEqual(end), options, false)
 }
 
-// FIXME: prefix is 0xFF*?
 func strinc(prefix []byte) []byte {
-	ret := make([]byte, len(prefix))
-	copy(ret, prefix)
 	for i := len(prefix); i > 0; i-- {
 		if prefix[i-1] != 0xFF {
+			ret := make([]byte, len(prefix))
+			copy(ret, prefix)
 			ret[i-1] += 1
 			return ret
 		}
 	}
+
+	ret := make([]byte, len(prefix)+1)
+	copy(ret, prefix)
+	ret[len(prefix)] = 0xFF
+
 	return prefix
 }
 

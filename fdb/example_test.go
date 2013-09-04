@@ -30,17 +30,17 @@ func ExampleTransactor() {
 	_ = fdb.APIVersion(100)
 	db, _ := fdb.OpenDefault()
 
-	setOne := func(transacter fdb.Transactor, key []byte, value []byte) {
-		fmt.Printf("%T\n", transacter)
-		transacter.Transact(func(tr *fdb.Transaction) (interface{}, error) {
+	setOne := func(transactor fdb.Transactor, key []byte, value []byte) {
+		fmt.Printf("%T\n", transactor)
+		transactor.Transact(func(tr *fdb.Transaction) (interface{}, error) {
 			tr.Set(key, value)
 			return nil, nil
 		})
 	}
 
-	setMany := func(transacter fdb.Transactor, value []byte, keys ...[]byte) {
-		fmt.Printf("%T\n", transacter)
-		transacter.Transact(func(tr *fdb.Transaction) (interface{}, error) {
+	setMany := func(transactor fdb.Transactor, value []byte, keys ...[]byte) {
+		fmt.Printf("%T\n", transactor)
+		transactor.Transact(func(tr *fdb.Transaction) (interface{}, error) {
 			for _, key := range(keys) {
 				setOne(tr, key, value)
 			}
