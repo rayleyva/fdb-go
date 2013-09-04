@@ -231,7 +231,12 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 				panic(e)
 			}
 
-			sm.tr.Set(pk, pv)
+			vl := 40000
+			if len(pv) < vl {
+				vl = len(pv)
+			}
+
+			sm.tr.Set(pk, pv[:vl])
 		}
 		sm.tr.Commit().GetOrPanic()
 	case "GET":
