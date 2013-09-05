@@ -44,7 +44,11 @@ import (
 )
 
 type future struct {
-	f *C.FDBFuture
+	ptr *C.FDBFuture
+}
+
+func (f *future) destroy() {
+	C.fdb_future_destroy(f.ptr)
 }
 
 func fdb_future_block_until_ready(f *C.FDBFuture) {
@@ -60,21 +64,16 @@ func fdb_future_block_until_ready(f *C.FDBFuture) {
 // BlockUntilReady blocks the calling goroutine until the future is
 // ready. A future becomes ready either when it receives a value of
 // its enclosed type (if any) or is set to an error state.
-func (future *future) BlockUntilReady() {
-	if future.f != nil {
-		fdb_future_block_until_ready(future.f)
-	}
+func (f *future) BlockUntilReady() {
+	fdb_future_block_until_ready(f.ptr)
 }
 
 // IsReady returns true if the future is ready, and false otherwise,
 // without blocking. A future is ready either when has received a
 // value of its enclosed type (if any) or has been set to an error
 // state.
-func (future *future) IsReady() bool {
-	if future.f != nil {
-		return C.fdb_future_is_ready(future.f) != 0
-	}
-	return true
+func (f *future) IsReady() bool {
+	return C.fdb_future_is_ready(f.ptr) != 0
 }
 
 // Cancel cancels a future and its associated asynchronous
@@ -85,56 +84,50 @@ func (future *future) IsReady() bool {
 // Note that even if a future is not ready, the associated
 // asynchronous operation may already have completed and be unable to
 // be cancelled.
-func (future *future) Cancel() {
-	if future.f != nil {
-		C.fdb_future_cancel(future.f)
-	}
+func (f *future) Cancel() {
+	C.fdb_future_cancel(f.ptr)
 }
 
 type FutureValue struct {
-	future
+	*futureValue
+}
+
+type futureValue struct {
+	*future
 	v   []byte
 	set bool
 }
 
-func (v *FutureValue) destroy() {
-	C.fdb_future_destroy(v.f)
-}
-
-func (v *FutureValue) GetWithError() ([]byte, error) {
-	if v.f == nil {
-		return nil, &Error{errorClientInvalidOperation}
-	}
-
-	if v.set {
-		return v.v, nil
+func (f FutureValue) GetWithError() ([]byte, error) {
+	if f.set {
+		return f.v, nil
 	}
 
 	var present C.fdb_bool_t
 	var value *C.uint8_t
 	var length C.int
 
-	fdb_future_block_until_ready(v.f)
-	if err := C.fdb_future_get_value(v.f, &present, &value, &length); err != 0 {
+	fdb_future_block_until_ready(f.ptr)
+	if err := C.fdb_future_get_value(f.ptr, &present, &value, &length); err != 0 {
 		if err == 2017 {
-			return v.v, nil
+			return f.v, nil
 		} else {
 			return nil, &Error{err}
 		}
 	}
 
 	if present != 0 {
-		v.v = C.GoBytes(unsafe.Pointer(value), length)
+		f.v = C.GoBytes(unsafe.Pointer(value), length)
 	}
-	v.set = true
+	f.set = true
 
-	C.fdb_future_release_memory(v.f)
+	C.fdb_future_release_memory(f.ptr)
 
-	return v.v, nil
+	return f.v, nil
 }
 
-func (v *FutureValue) GetOrPanic() []byte {
-	val, err := v.GetWithError()
+func (f FutureValue) GetOrPanic() []byte {
+	val, err := f.GetWithError()
 	if err != nil {
 		panic(err)
 	}
@@ -142,44 +135,40 @@ func (v *FutureValue) GetOrPanic() []byte {
 }
 
 type FutureKey struct {
-	future
+	*futureKey
+}
+
+type futureKey struct {
+	*future
 	k []byte
 }
 
-func (k *FutureKey) destroy() {
-	C.fdb_future_destroy(k.f)
-}
-
-func (k *FutureKey) GetWithError() ([]byte, error) {
-	if k.f == nil {
-		return nil, &Error{errorClientInvalidOperation}
-	}
-
-	if k.k != nil {
-		return k.k, nil
+func (f FutureKey) GetWithError() ([]byte, error) {
+	if f.k != nil {
+		return f.k, nil
 	}
 
 	var value *C.uint8_t
 	var length C.int
 
-	fdb_future_block_until_ready(k.f)
-	if err := C.fdb_future_get_key(k.f, &value, &length); err != 0 {
+	fdb_future_block_until_ready(f.ptr)
+	if err := C.fdb_future_get_key(f.ptr, &value, &length); err != 0 {
 		if err == 2017 {
-			return k.k, nil
+			return f.k, nil
 		} else {
 			return nil, &Error{err}
 		}
 	}
 
-	k.k = C.GoBytes(unsafe.Pointer(value), length)
+	f.k = C.GoBytes(unsafe.Pointer(value), length)
 
-	C.fdb_future_release_memory(k.f)
+	C.fdb_future_release_memory(f.ptr)
 
-	return k.k, nil
+	return f.k, nil
 }
 
-func (k *FutureKey) GetOrPanic() []byte {
-	val, err := k.GetWithError()
+func (f FutureKey) GetOrPanic() []byte {
+	val, err := f.GetWithError()
 	if err != nil {
 		panic(err)
 	}
@@ -187,38 +176,26 @@ func (k *FutureKey) GetOrPanic() []byte {
 }
 
 type FutureNil struct {
-	future
+	*future
 }
 
-func (f *FutureNil) destroy() {
-	C.fdb_future_destroy(f.f)
-}
-
-func (f *FutureNil) GetWithError() error {
-	if f.f == nil {
-		return &Error{errorClientInvalidOperation}
-	}
-
-	fdb_future_block_until_ready(f.f)
-	if err := C.fdb_future_get_error(f.f); err != 0 {
+func (f FutureNil) GetWithError() error {
+	fdb_future_block_until_ready(f.ptr)
+	if err := C.fdb_future_get_error(f.ptr); err != 0 {
 		return &Error{err}
 	}
 
 	return nil
 }
 
-func (f *FutureNil) GetOrPanic() {
+func (f FutureNil) GetOrPanic() {
 	if err := f.GetWithError(); err != nil {
 		panic(err)
 	}
 }
 
 type futureKeyValueArray struct {
-	future
-}
-
-func (f *futureKeyValueArray) destroy() {
-	C.fdb_future_destroy(f.f)
+	*future
 }
 
 func stringRefToSlice(ptr uintptr) []byte {
@@ -239,17 +216,13 @@ func stringRefToSlice(ptr uintptr) []byte {
 }
 
 func (f *futureKeyValueArray) GetWithError() ([]KeyValue, bool, error) {
-	if f.f == nil {
-		return nil, false, &Error{errorClientInvalidOperation}
-	}
-
-	fdb_future_block_until_ready(f.f)
+	fdb_future_block_until_ready(f.ptr)
 
 	var kvs *C.void
 	var count C.int
 	var more C.fdb_bool_t
 
-	if err := C.fdb_future_get_keyvalue_array(f.f, (**C.FDBKeyValue)(unsafe.Pointer(&kvs)), &count, &more); err != 0 {
+	if err := C.fdb_future_get_keyvalue_array(f.ptr, (**C.FDBKeyValue)(unsafe.Pointer(&kvs)), &count, &more); err != 0 {
 		return nil, false, &Error{err}
 	}
 
@@ -267,29 +240,21 @@ func (f *futureKeyValueArray) GetWithError() ([]KeyValue, bool, error) {
 }
 
 type FutureVersion struct {
-	future
+	*future
 }
 
-func (v *FutureVersion) destroy() {
-	C.fdb_future_destroy(v.f)
-}
-
-func (v *FutureVersion) GetWithError() (int64, error) {
-	if v.f == nil {
-		return 0, &Error{errorClientInvalidOperation}
-	}
-
-	fdb_future_block_until_ready(v.f)
+func (f FutureVersion) GetWithError() (int64, error) {
+	fdb_future_block_until_ready(f.ptr)
 
 	var ver C.int64_t
-	if err := C.fdb_future_get_version(v.f, &ver); err != 0 {
+	if err := C.fdb_future_get_version(f.ptr, &ver); err != 0 {
 		return 0, &Error{err}
 	}
 	return int64(ver), nil
 }
 
-func (v *FutureVersion) GetOrPanic() int64 {
-	val, err := v.GetWithError()
+func (f FutureVersion) GetOrPanic() int64 {
+	val, err := f.GetWithError()
 	if err != nil {
 		panic(err)
 	}

@@ -53,7 +53,7 @@ type Error struct {
 // either a Database or a Transaction to enable transactional
 // composition.
 type Transactor interface {
-	Transact(func (tr *Transaction) (interface{}, error)) (interface{}, error)
+	Transact(func (tr Transaction) (interface{}, error)) (interface{}, error)
 }
 
 // Code returns the error code specific to this error (see
@@ -133,12 +133,12 @@ func APIVersion(version int) error {
 var networkStarted bool
 var networkMutex sync.Mutex
 
-var openClusters map[string]*Cluster
-var openDatabases map[string]*Database
+var openClusters map[string]Cluster
+var openDatabases map[string]Database
 
 func init() {
-	openClusters = make(map[string]*Cluster)
-	openDatabases = make(map[string]*Database)
+	openClusters = make(map[string]Cluster)
+	openDatabases = make(map[string]Database)
 }
 
 func startNetwork() error {
@@ -177,7 +177,7 @@ const DefaultClusterFile string = ""
 // the FoundationDB cluster identified by the DefaultClusterFile on
 // the current machine. The FoundationDB client networking engine will
 // be initialized first, if necessary.
-func OpenDefault() (db *Database, e error) {
+func OpenDefault() (db Database, e error) {
 	return Open(DefaultClusterFile, "DB")
 }
 
@@ -187,12 +187,12 @@ func OpenDefault() (db *Database, e error) {
 // initialized first, if necessary.
 //
 // In the current release, the database name must be "DB".
-func Open(clusterFile string, dbName string) (db *Database, e error) {
+func Open(clusterFile string, dbName string) (db Database, e error) {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
 	if Options.apiVersion == 0 {
-		return nil, &Error{errorApiVersionUnset}
+		return Database{}, &Error{errorApiVersionUnset}
 	}
 
 	if !networkStarted {
@@ -202,8 +202,8 @@ func Open(clusterFile string, dbName string) (db *Database, e error) {
 		}
 	}
 
-	cluster := openClusters[clusterFile]
-	if cluster == nil {
+	cluster, ok := openClusters[clusterFile]
+	if !ok {
 		cluster, e = createCluster(clusterFile)
 		if e != nil {
 			return
@@ -211,8 +211,8 @@ func Open(clusterFile string, dbName string) (db *Database, e error) {
 		openClusters[clusterFile] = cluster
 	}
 
-	db = openDatabases[dbName]
-	if db == nil {
+	db, ok = openDatabases[dbName]
+	if !ok {
 		db, e = cluster.OpenDatabase(dbName)
 		if e != nil {
 			return
@@ -223,7 +223,7 @@ func Open(clusterFile string, dbName string) (db *Database, e error) {
 	return
 }
 
-func createCluster(clusterFile string) (*Cluster, error) {
+func createCluster(clusterFile string) (Cluster, error) {
 	var cf *C.char
 
 	if len(clusterFile) != 0 {
@@ -236,29 +236,29 @@ func createCluster(clusterFile string) (*Cluster, error) {
 	var outc *C.FDBCluster
 
 	if err := C.fdb_future_get_cluster(f, &outc); err != 0 {
-		return nil, &Error{err}
+		return Cluster{}, &Error{err}
 	}
 
 	C.fdb_future_destroy(f)
 
-	c := &Cluster{c: outc}
-	runtime.SetFinalizer(c, (*Cluster).destroy)
+	c := &cluster{outc}
+	runtime.SetFinalizer(c, (*cluster).destroy)
 
-	return c, nil
+	return Cluster{c}, nil
 }
 
 // CreateCluster returns a cluster handle to the FoundationDB cluster
 // identified by the provided cluster file.
-func CreateCluster(clusterFile string) (*Cluster, error) {
+func CreateCluster(clusterFile string) (Cluster, error) {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
 	if Options.apiVersion == 0 {
-		return nil, &Error{errorApiVersionUnset}
+		return Cluster{}, &Error{errorApiVersionUnset}
 	}
 
 	if !networkStarted {
-		return nil, &Error{errorNetworkNotSetup}
+		return Cluster{}, &Error{errorNetworkNotSetup}
 	}
 
 	return createCluster(clusterFile)

@@ -35,11 +35,15 @@ import (
 // preferable to use Open or OpenDefault to obtain a database handle
 // directly.
 type Cluster struct {
-	c *C.FDBCluster
+	*cluster
 }
 
-func (c *Cluster) destroy() {
-	C.fdb_cluster_destroy(c.c)
+type cluster struct {
+	ptr *C.FDBCluster
+}
+
+func (c *cluster) destroy() {
+	C.fdb_cluster_destroy(c.ptr)
 }
 
 // OpenDatabase returns a database handle from the FoundationDB
@@ -47,26 +51,20 @@ func (c *Cluster) destroy() {
 // obtain a database handle directly.
 //
 // In the current release, the database name must be "DB".
-func (c *Cluster) OpenDatabase(dbName string) (*Database, error) {
-	if c.c == nil {
-		return nil, &Error{errorClientInvalidOperation}
-	}
-
-	f := C.fdb_cluster_create_database(c.c, byteSliceToPtr([]byte(dbName)), C.int(len([]byte(dbName))))
+func (c Cluster) OpenDatabase(dbName string) (Database, error) {
+	f := C.fdb_cluster_create_database(c.ptr, byteSliceToPtr([]byte(dbName)), C.int(len([]byte(dbName))))
 	fdb_future_block_until_ready(f)
 
 	var outd *C.FDBDatabase
 
 	if err := C.fdb_future_get_database(f, &outd); err != 0 {
-		return nil, &Error{err}
+		return Database{}, &Error{err}
 	}
 
 	C.fdb_future_destroy(f)
 
-	d := &Database{d: outd}
-	d.Options.database = d
+	d := &database{outd}
+	runtime.SetFinalizer(d, (*database).destroy)
 
-	runtime.SetFinalizer(d, (*Database).destroy)
-
-	return d, nil
+	return Database{d, DatabaseOptions{d}}, nil
 }

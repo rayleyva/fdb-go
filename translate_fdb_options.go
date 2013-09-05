@@ -46,26 +46,26 @@ type Options struct {
 }
 
 func writeOptString(receiver string, function string, opt Option) {
-	fmt.Printf(`func (opt %s) %s(param string) error {
-	return opt.setOpt(%d, []byte(param))
+	fmt.Printf(`func (o %s) %s(param string) error {
+	return o.setOpt(%d, []byte(param))
 }
 `, receiver, function, opt.Code)
 }
 
 func writeOptInt(receiver string, function string, opt Option) {
-	fmt.Printf(`func (opt %s) %s(param int64) error {
+	fmt.Printf(`func (o %s) %s(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
 		return e
 	}
-	return opt.setOpt(%d, b)
+	return o.setOpt(%d, b)
 }
 `, receiver, function, opt.Code)
 }
 
 func writeOptNone(receiver string, function string, opt Option) {
-	fmt.Printf(`func (opt %s) %s() error {
-	return opt.setOpt(%d, nil)
+	fmt.Printf(`func (o %s) %s() error {
+	return o.setOpt(%d, nil)
 }
 `, receiver, function, opt.Code)
 }
@@ -102,14 +102,14 @@ func writeMutation(opt Option) {
 	fmt.Printf(`
 // %s
 // Parameter: %s
-func (t *Transaction) %s(key []byte, param []byte) {
+func (t Transaction) %s(key []byte, param []byte) {
 	t.atomicOp(key, param, %d)
 }
 
 // %s
 // Parameter: %s
-func (d *Database) %s(key []byte, param []byte) error {
-	_, e := d.Transact(func (tr *Transaction) (interface{}, error) {
+func (d Database) %s(key []byte, param []byte) error {
+	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.%s(key, param)
 		return nil, nil
 	})

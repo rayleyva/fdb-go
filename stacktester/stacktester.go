@@ -29,7 +29,7 @@ type stackEntry struct {
 
 type StackMachine struct {
 	prefix []byte
-	tr *fdb.Transaction
+	tr fdb.Transaction
 	stack []stackEntry
 	lastVersion int64
 	threads sync.WaitGroup
@@ -61,17 +61,17 @@ func (sm *StackMachine) waitAndPop() (ret stackEntry) {
 	ret, sm.stack = sm.stack[len(sm.stack) - 1], sm.stack[:len(sm.stack) - 1]
 	switch el := ret.item.(type) {
 	case int64, []byte, string:
-	case *fdb.FutureNil:
+	case fdb.FutureNil:
 		el.GetOrPanic()
 		ret.item = []byte("RESULT_NOT_PRESENT")
-	case *fdb.FutureValue:
+	case fdb.FutureValue:
 		v := el.GetOrPanic()
 		if v != nil {
 			ret.item = v
 		} else {
 			ret.item = []byte("RESULT_NOT_PRESENT")
 		}
-	case *fdb.FutureKey:
+	case fdb.FutureKey:
 		ret.item = el.GetOrPanic()
 	case nil:
 	default:
@@ -106,11 +106,11 @@ func (sm *StackMachine) dumpStack() {
 		switch el := el.(type) {
 		case int64:
 			fmt.Printf(" %d", el)
-		case *fdb.FutureNil:
+		case fdb.FutureNil:
 			fmt.Printf(" FutureNil")
-		case *fdb.FutureValue:
+		case fdb.FutureValue:
 			fmt.Printf(" FutureValue")
-		case *fdb.FutureKey:
+		case fdb.FutureKey:
 			fmt.Printf(" FutureKey")
 		case []byte:
 			fmt.Printf(" %q", string(el))
@@ -197,13 +197,13 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		sm.store(idx, []byte("GOT_READ_VERSION"))
 	case "SET":
 		switch o := obj.(type) {
-		case *fdb.Database:
+		case fdb.Database:
 			e = o.Set(sm.waitAndPop().item.([]byte), sm.waitAndPop().item.([]byte))
 			if e != nil {
 				panic(e)
 			}
 			sm.store(idx, []byte("RESULT_NOT_PRESENT"))
-		case *fdb.Transaction:
+		case fdb.Transaction:
 			o.Set(sm.waitAndPop().item.([]byte), sm.waitAndPop().item.([]byte))
 		}
 	case "LOG_STACK":
@@ -241,7 +241,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		sm.tr.Commit().GetOrPanic()
 	case "GET":
 		switch o := obj.(type) {
-		case *fdb.Database:
+		case fdb.Database:
 			v, e := db.Get(sm.waitAndPop().item.([]byte))
 			if e != nil {
 				panic(e)
@@ -260,13 +260,13 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		sm.tr.Reset()
 	case "CLEAR":
 		switch o := obj.(type) {
-		case *fdb.Database:
+		case fdb.Database:
 			e := db.Clear(sm.waitAndPop().item.([]byte))
 			if e != nil {
 				panic(e)
 			}
 			sm.store(idx, []byte("RESULT_NOT_PRESENT"))
-		case *fdb.Transaction:
+		case fdb.Transaction:
 			o.Clear(sm.waitAndPop().item.([]byte))
 		}
 	case "SET_READ_VERSION":
@@ -283,7 +283,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 	case "GET_KEY":
 		sel := fdb.KeySelector{sm.waitAndPop().item.([]byte), int64ToBool(sm.waitAndPop().item.(int64)), int(sm.waitAndPop().item.(int64))}
 		switch o := obj.(type) {
-		case *fdb.Database:
+		case fdb.Database:
 			v, e := o.GetKey(sel)
 			if e != nil {
 				panic(e)
@@ -303,7 +303,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		reverse := int64ToBool(sm.waitAndPop().item.(int64))
 		mode := sm.waitAndPop().item.(int64)
 		switch o := obj.(type) {
-		case *fdb.Database:
+		case fdb.Database:
 			v, e := db.GetRange(begin, end, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)})
 			if e != nil {
 				panic(e)
@@ -314,13 +314,13 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		}
 	case "CLEAR_RANGE":
 		switch o := obj.(type) {
-		case *fdb.Database:
+		case fdb.Database:
 			e := o.ClearRange(sm.waitAndPop().item.([]byte), sm.waitAndPop().item.([]byte))
 			if e != nil {
 				panic(e)
 			}
 			sm.store(idx, []byte("RESULT_NOT_PRESENT"))
-		case *fdb.Transaction:
+		case fdb.Transaction:
 			o.ClearRange(sm.waitAndPop().item.([]byte), sm.waitAndPop().item.([]byte))
 		}
 	case "GET_RANGE_STARTS_WITH":
@@ -333,7 +333,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		reverse := int64ToBool(sm.waitAndPop().item.(int64))
 		mode := sm.waitAndPop().item.(int64)
 		switch o := obj.(type) {
-		case *fdb.Database:
+		case fdb.Database:
 			v, e := db.GetRangeStartsWith(prefix, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)})
 			if e != nil {
 				panic(e)
@@ -353,7 +353,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		reverse := int64ToBool(sm.waitAndPop().item.(int64))
 		mode := sm.waitAndPop().item.(int64)
 		switch o := obj.(type) {
-		case *fdb.Database:
+		case fdb.Database:
 			v, e := db.GetRangeSelector(begin, end, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)})
 			if e != nil {
 				panic(e)
@@ -365,13 +365,13 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 	case "CLEAR_RANGE_STARTS_WITH":
 		prefix := sm.waitAndPop().item.([]byte)
 		switch o := obj.(type) {
-		case *fdb.Database:
+		case fdb.Database:
 			e := o.ClearRangeStartsWith(prefix)
 			if e != nil {
 				panic(e)
 			}
 			sm.store(idx, []byte("RESULT_NOT_PRESENT"))
-		case *fdb.Transaction:
+		case fdb.Transaction:
 			o.ClearRangeStartsWith(prefix)
 		}
 	case "TUPLE_PACK":
@@ -418,7 +418,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		}()
 	case "WAIT_EMPTY":
 		prefix := sm.waitAndPop().item.([]byte)
-		db.Transact(func (tr *fdb.Transaction) (interface{}, error) {
+		db.Transact(func (tr fdb.Transaction) (interface{}, error) {
 			v := tr.GetRangeStartsWith(prefix, fdb.RangeOptions{}).GetSliceOrPanic()
 			if len(v) != 0 {
 				panic(fdb.NewError(1020))
@@ -453,10 +453,10 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 	case "ATOMIC_OP":
 		opname := string(sm.waitAndPop().item.([]byte))
 		switch obj.(type) {
-		case *fdb.Database:
+		case fdb.Database:
 			dbAtomics[opname](sm.waitAndPop().item.([]byte), sm.waitAndPop().item.([]byte))
 			sm.store(idx, []byte("RESULT_NOT_PRESENT"))
-		case *fdb.Transaction:
+		case fdb.Transaction:
 			sm.atomics[opname](sm.waitAndPop().item.([]byte), sm.waitAndPop().item.([]byte))
 		}
 	case "DISABLE_WRITE_CONFLICT":
@@ -483,7 +483,7 @@ func (sm *StackMachine) Run() {
 		panic(e)
 	}
 
-	r, e := db.Transact(func (tr *fdb.Transaction) (interface{}, error) {
+	r, e := db.Transact(func (tr fdb.Transaction) (interface{}, error) {
 		return tr.GetRange(begin, end, fdb.RangeOptions{}).GetSliceOrPanic(), nil
 	})
 	if e != nil {
@@ -504,7 +504,7 @@ func (sm *StackMachine) Run() {
 	sm.threads.Wait()
 }
 
-var db *fdb.Database
+var db fdb.Database
 var dbAtomics map[string]func([]byte, []byte) error
 
 var clusterFile string

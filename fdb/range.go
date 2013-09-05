@@ -38,7 +38,7 @@ type RangeOptions struct {
 }
 
 type RangeResult struct {
-	t *Transaction
+	t *transaction
 	begin, end KeySelector
 	options RangeOptions
 	snapshot bool
@@ -46,10 +46,6 @@ type RangeResult struct {
 }
 
 func (rr *RangeResult) GetSliceWithError() ([]KeyValue, error) {
-	if rr.t == nil {
-		return nil, &Error{errorClientInvalidOperation}
-	}
-
 	var ret []KeyValue
 
 	ri := rr.Iterator()
@@ -143,7 +139,8 @@ func (ri *RangeIterator) fetchNextBatch() {
 
 	ri.iteration += 1
 
-	ri.f = ri.rr.t.doGetRange(ri.begin, ri.end, ri.options, ri.rr.snapshot, ri.iteration)
+	f := ri.rr.t.doGetRange(ri.begin, ri.end, ri.options, ri.rr.snapshot, ri.iteration)
+	ri.f = &f
 }
 
 func (ri *RangeIterator) GetNextWithError() (kv KeyValue, e error) {
