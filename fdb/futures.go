@@ -199,20 +199,15 @@ type futureKeyValueArray struct {
 }
 
 func stringRefToSlice(ptr uintptr) []byte {
-	size := int(*((*C.int)(unsafe.Pointer(ptr+8))))
+	size := *((*C.int)(unsafe.Pointer(ptr+8)))
 
 	if size == 0 {
 		return []byte{}
 	}
 
-	ret := make([]byte, size)
-
-	dst := unsafe.Pointer(&(ret[0]))
 	src := unsafe.Pointer(*(**C.uint8_t)(unsafe.Pointer(ptr)))
 
-	C.memcpy(dst, src, C.size_t(size))
-
-	return ret
+	return C.GoBytes(src, size)
 }
 
 func (f *futureKeyValueArray) GetWithError() ([]KeyValue, bool, error) {
