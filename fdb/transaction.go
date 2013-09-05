@@ -42,7 +42,6 @@ type ReadTransaction interface {
 
 type Transaction struct {
 	*transaction
-	Options TransactionOptions
 }
 
 type transaction struct {
@@ -238,6 +237,10 @@ func (t Transaction) AddWriteConflictRange(begin []byte, end []byte) error {
 
 func (t Transaction) AddWriteConflictKey(key []byte) error {
 	return addConflictRange(t.transaction, key, append(key, 0x00), conflictRangeTypeWrite)
+}
+
+func (t Transaction) Options() TransactionOptions {
+	return TransactionOptions{t.transaction}
 }
 
 type Snapshot struct {

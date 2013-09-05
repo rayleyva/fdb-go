@@ -460,7 +460,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 			sm.atomics[opname](sm.waitAndPop().item.([]byte), sm.waitAndPop().item.([]byte))
 		}
 	case "DISABLE_WRITE_CONFLICT":
-		sm.tr.Options.SetNextWriteNoWriteConflictRange()
+		sm.tr.Options().SetNextWriteNoWriteConflictRange()
 	case "CANCEL":
 		sm.tr.Cancel()
 	case "UNIT_TESTS":

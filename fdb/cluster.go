@@ -66,5 +66,5 @@ func (c Cluster) OpenDatabase(dbName string) (Database, error) {
 	d := &database{outd}
 	runtime.SetFinalizer(d, (*database).destroy)
 
-	return Database{d, DatabaseOptions{d}}, nil
+	return Database{d}, nil
 }

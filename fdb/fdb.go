@@ -79,18 +79,17 @@ func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte) error {
 }
 
 type NetworkOptions struct {
-	apiVersion int
 }
 
-// Options is a singleton value exposing options which affect the
-// entire FoundationDB client.
-var Options NetworkOptions
+func Options() NetworkOptions {
+	return NetworkOptions{}
+}
 
 func (opt NetworkOptions) setOpt(code int, param []byte) error {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
-	if Options.apiVersion == 0 {
+	if apiVersion == 0 {
 		return &Error{errorApiVersionUnset}
 	}
 
@@ -109,7 +108,7 @@ func APIVersion(version int) error {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
-	if Options.apiVersion != 0 {
+	if apiVersion != 0 {
 		return &Error{errorApiVersionAlreadySet}
 	}
 
@@ -125,11 +124,12 @@ func APIVersion(version int) error {
 		return &Error{e}
 	}
 
-	Options.apiVersion = version
+	apiVersion = version
 
 	return nil
 }
 
+var apiVersion int
 var networkStarted bool
 var networkMutex sync.Mutex
 
@@ -161,7 +161,7 @@ func StartNetwork() error {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
-	if Options.apiVersion == 0 {
+	if apiVersion == 0 {
 		return &Error{errorApiVersionUnset}
 	}
 
@@ -191,7 +191,7 @@ func Open(clusterFile string, dbName string) (db Database, e error) {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
-	if Options.apiVersion == 0 {
+	if apiVersion == 0 {
 		return Database{}, &Error{errorApiVersionUnset}
 	}
 
@@ -253,7 +253,7 @@ func CreateCluster(clusterFile string) (Cluster, error) {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
-	if Options.apiVersion == 0 {
+	if apiVersion == 0 {
 		return Cluster{}, &Error{errorApiVersionUnset}
 	}
 

@@ -38,7 +38,6 @@ import (
 // Transact method.
 type Database struct {
 	*database
-	Options DatabaseOptions
 }
 
 type database struct {
@@ -72,7 +71,7 @@ func (d Database) CreateTransaction() (Transaction, error) {
 	t := &transaction{outt}
 	runtime.SetFinalizer(t, (*transaction).destroy)
 
-	return Transaction{t, TransactionOptions{t}}, nil
+	return Transaction{t}, nil
 }
 
 // Transact runs a caller-provided function inside a retry loop,
@@ -263,4 +262,8 @@ func (d Database) ClearAndWatch(key []byte) (FutureNil, error) {
 		return FutureNil{}, e
 	}
 	return r.(FutureNil), nil
+}
+
+func (d Database) Options() DatabaseOptions {
+	return DatabaseOptions{d.database}
 }
