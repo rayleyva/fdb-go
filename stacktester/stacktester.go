@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"runtime"
+	"reflect"
 )
 
 const verbose bool = false
@@ -34,11 +35,10 @@ type StackMachine struct {
 	lastVersion int64
 	threads sync.WaitGroup
 	verbose bool
-	atomics map[string]func([]byte, []byte)
 }
 
 func newStackMachine(prefix []byte, verbose bool) *StackMachine {
-	sm := StackMachine{verbose: verbose, prefix: prefix, atomics: make(map[string]func([]byte, []byte))}
+	sm := StackMachine{verbose: verbose, prefix: prefix}
 	return &sm
 }
 
@@ -183,13 +183,6 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		if e != nil {
 			panic(e)
 		}
-		for k, _ := range sm.atomics {
-			delete(sm.atomics, k)
-		}
-		sm.atomics["ADD"] = sm.tr.Add
-		sm.atomics["AND"] = sm.tr.And
-		sm.atomics["OR"] = sm.tr.Or
-		sm.atomics["XOR"] = sm.tr.Xor
 	case "ON_ERROR":
 		sm.store(idx, sm.tr.OnError(fdb.NewError(int(sm.waitAndPop().item.(int64)))))
 	case "GET_READ_VERSION":
@@ -451,13 +444,13 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		}
 		sm.store(idx, []byte("SET_CONFLICT_KEY"))
 	case "ATOMIC_OP":
-		opname := string(sm.waitAndPop().item.([]byte))
+		opname := strings.Title(string(sm.waitAndPop().item.([]byte)))
+		key := sm.waitAndPop().item.([]byte)
+		value := sm.waitAndPop().item.([]byte)
+		reflect.ValueOf(&obj).MethodByName(opname).Call([]reflect.Value{reflect.ValueOf(&key), reflect.ValueOf(&value)})
 		switch obj.(type) {
 		case fdb.Database:
-			dbAtomics[opname](sm.waitAndPop().item.([]byte), sm.waitAndPop().item.([]byte))
 			sm.store(idx, []byte("RESULT_NOT_PRESENT"))
-		case fdb.Transaction:
-			sm.atomics[opname](sm.waitAndPop().item.([]byte), sm.waitAndPop().item.([]byte))
 		}
 	case "DISABLE_WRITE_CONFLICT":
 		sm.tr.Options().SetNextWriteNoWriteConflictRange()
@@ -505,7 +498,6 @@ func (sm *StackMachine) Run() {
 }
 
 var db fdb.Database
-var dbAtomics map[string]func([]byte, []byte) error
 
 var clusterFile string
 
@@ -526,12 +518,6 @@ func main() {
 	if e != nil {
 		log.Fatal(e)
 	}
-
-	dbAtomics = make(map[string]func([]byte, []byte) error)
-	dbAtomics["ADD"] = db.Add
-	dbAtomics["AND"] = db.And
-	dbAtomics["OR"] = db.Or
-	dbAtomics["XOR"] = db.Xor
 
 	sm := newStackMachine(prefix, verbose)
 
