@@ -45,7 +45,7 @@ type RangeResult struct {
 	f *futureKeyValueArray
 }
 
-func (rr *RangeResult) GetSliceWithError() ([]KeyValue, error) {
+func (rr RangeResult) GetSliceWithError() ([]KeyValue, error) {
 	var ret []KeyValue
 
 	ri := rr.Iterator()
@@ -68,7 +68,7 @@ func (rr *RangeResult) GetSliceWithError() ([]KeyValue, error) {
 	return ret, nil
 }
 
-func (rr *RangeResult) GetSliceOrPanic() []KeyValue {
+func (rr RangeResult) GetSliceOrPanic() []KeyValue {
 	kvs, e := rr.GetSliceWithError()
 	if e != nil {
 		panic(e)
@@ -76,19 +76,20 @@ func (rr *RangeResult) GetSliceOrPanic() []KeyValue {
 	return kvs
 }
 
-func (rr *RangeResult) Iterator() *RangeIterator {
+func (rr RangeResult) Iterator() *RangeIterator {
 	return &RangeIterator{
-		rr: rr,
+		t: rr.t,
 		f: rr.f,
 		begin: rr.begin,
 		end: rr.end,
 		options: rr.options,
 		iteration: 1,
+		snapshot: rr.snapshot,
 	}
 }
 
 type RangeIterator struct {
-	rr *RangeResult
+	t *transaction
 	f *futureKeyValueArray
 	begin, end KeySelector
 	options RangeOptions
@@ -98,6 +99,7 @@ type RangeIterator struct {
 	kvs []KeyValue
 	index int
 	err error
+	snapshot bool
 }
 
 func (ri *RangeIterator) Advance() bool {
@@ -139,15 +141,11 @@ func (ri *RangeIterator) fetchNextBatch() {
 
 	ri.iteration += 1
 
-	f := ri.rr.t.doGetRange(ri.begin, ri.end, ri.options, ri.rr.snapshot, ri.iteration)
+	f := ri.t.doGetRange(ri.begin, ri.end, ri.options, ri.snapshot, ri.iteration)
 	ri.f = &f
 }
 
 func (ri *RangeIterator) GetNextWithError() (kv KeyValue, e error) {
-	if ri.rr == nil {
-		return KeyValue{}, &Error{errorClientInvalidOperation}
-	}
-
 	if ri.err != nil {
 		e = ri.err
 		return

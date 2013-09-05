@@ -34,9 +34,9 @@ import (
 type ReadTransaction interface {
 	Get(key []byte) FutureValue
 	GetKey(sel KeySelector) FutureKey
-	GetRange(begin []byte, end []byte, options RangeOptions) *RangeResult
-	GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) *RangeResult
-	GetRangeStartsWith(prefix []byte, options RangeOptions) *RangeResult
+	GetRange(begin []byte, end []byte, options RangeOptions) RangeResult
+	GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) RangeResult
+	GetRangeStartsWith(prefix []byte, options RangeOptions) RangeResult
 	GetReadVersion() FutureVersion
 }
 
@@ -112,9 +112,9 @@ func (t *transaction) doGetRange(begin KeySelector, end KeySelector, options Ran
 	return futureKeyValueArray{f}
 }
 
-func (t *transaction) getRangeSelector(begin KeySelector, end KeySelector, options RangeOptions, snapshot bool) *RangeResult {
+func (t *transaction) getRangeSelector(begin KeySelector, end KeySelector, options RangeOptions, snapshot bool) RangeResult {
 	f := t.doGetRange(begin, end, options, snapshot, 1)
-	return &RangeResult{
+	return RangeResult{
 		t: t,
 		begin: begin,
 		end: end,
@@ -124,11 +124,11 @@ func (t *transaction) getRangeSelector(begin KeySelector, end KeySelector, optio
 	}
 }
 
-func (t Transaction) GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) *RangeResult {
+func (t Transaction) GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) RangeResult {
 	return t.getRangeSelector(begin, end, options, false)
 }
 
-func (t Transaction) GetRange(begin []byte, end []byte, options RangeOptions) *RangeResult {
+func (t Transaction) GetRange(begin []byte, end []byte, options RangeOptions) RangeResult {
 	return t.getRangeSelector(FirstGreaterOrEqual(begin), FirstGreaterOrEqual(end), options, false)
 }
 
@@ -149,7 +149,7 @@ func strinc(prefix []byte) []byte {
 	return prefix
 }
 
-func (t Transaction) GetRangeStartsWith(prefix []byte, options RangeOptions) *RangeResult {
+func (t Transaction) GetRangeStartsWith(prefix []byte, options RangeOptions) RangeResult {
 	return t.getRangeSelector(FirstGreaterOrEqual(prefix), FirstGreaterOrEqual(strinc(prefix)), options, false)
 }
 
@@ -255,15 +255,15 @@ func (s Snapshot) GetKey(sel KeySelector) FutureKey {
 	return s.getKey(sel, 1)
 }
 
-func (s Snapshot) GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) *RangeResult {
+func (s Snapshot) GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) RangeResult {
 	return s.getRangeSelector(begin, end, options, true)
 }
 
-func (s Snapshot) GetRange(begin []byte, end []byte, options RangeOptions) *RangeResult {
+func (s Snapshot) GetRange(begin []byte, end []byte, options RangeOptions) RangeResult {
 	return s.getRangeSelector(FirstGreaterOrEqual(begin), FirstGreaterOrEqual(end), options, true)
 }
 
-func (s Snapshot) GetRangeStartsWith(prefix []byte, options RangeOptions) *RangeResult {
+func (s Snapshot) GetRangeStartsWith(prefix []byte, options RangeOptions) RangeResult {
 	return s.getRangeSelector(FirstGreaterOrEqual(prefix), FirstGreaterOrEqual(strinc(prefix)), options, true)
 }
 
