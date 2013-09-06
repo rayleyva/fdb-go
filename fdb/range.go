@@ -43,6 +43,7 @@ type RangeResult struct {
 	options RangeOptions
 	snapshot bool
 	f *futureKeyValueArray
+	err error
 }
 
 func (rr RangeResult) GetSliceWithError() ([]KeyValue, error) {
@@ -85,6 +86,7 @@ func (rr RangeResult) Iterator() *RangeIterator {
 		options: rr.options,
 		iteration: 1,
 		snapshot: rr.snapshot,
+		err: rr.err,
 	}
 }
 

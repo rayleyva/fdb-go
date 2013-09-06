@@ -132,25 +132,26 @@ func (t Transaction) GetRange(begin []byte, end []byte, options RangeOptions) Ra
 	return t.getRangeSelector(FirstGreaterOrEqual(begin), FirstGreaterOrEqual(end), options, false)
 }
 
-func strinc(prefix []byte) []byte {
-	for i := len(prefix); i > 0; i-- {
-		if prefix[i-1] != 0xFF {
-			ret := make([]byte, len(prefix))
-			copy(ret, prefix)
-			ret[i-1] += 1
-			return ret
+func strinc(prefix []byte) ([]byte, error) {
+	for i := len(prefix) - 1; i >= 0; i-- {
+		if prefix[i] != 0xFF {
+			ret := make([]byte, i+1)
+			copy(ret, prefix[:i+1])
+			ret[i] += 1
+			return ret, nil
 		}
 	}
 
-	ret := make([]byte, len(prefix)+1)
-	copy(ret, prefix)
-	ret[len(prefix)] = 0xFF
-
-	return prefix
+	return nil, &Error{errorKeyOutsideLegalRange}
 }
 
 func (t Transaction) GetRangeStartsWith(prefix []byte, options RangeOptions) RangeResult {
-	return t.getRangeSelector(FirstGreaterOrEqual(prefix), FirstGreaterOrEqual(strinc(prefix)), options, false)
+	end, e := strinc(prefix)
+	if e != nil {
+		return RangeResult{err: e}
+	} else {
+		return t.getRangeSelector(FirstGreaterOrEqual(prefix), FirstGreaterOrEqual(end), options, false)
+	}
 }
 
 func (t *transaction) getReadVersion() FutureVersion {
@@ -176,7 +177,10 @@ func (t Transaction) ClearRange(begin []byte, end []byte) {
 }
 
 func (t Transaction) ClearRangeStartsWith(prefix []byte) {
-	C.fdb_transaction_clear_range(t.ptr, byteSliceToPtr(prefix), C.int(len(prefix)), byteSliceToPtr(strinc(prefix)), C.int(len(prefix)))
+	end, e := strinc(prefix)
+	if e == nil {
+		C.fdb_transaction_clear_range(t.ptr, byteSliceToPtr(prefix), C.int(len(prefix)), byteSliceToPtr(end), C.int(len(end)))
+	}
 }
 
 func (t Transaction) GetCommittedVersion() (int64, error) {
@@ -264,7 +268,12 @@ func (s Snapshot) GetRange(begin []byte, end []byte, options RangeOptions) Range
 }
 
 func (s Snapshot) GetRangeStartsWith(prefix []byte, options RangeOptions) RangeResult {
-	return s.getRangeSelector(FirstGreaterOrEqual(prefix), FirstGreaterOrEqual(strinc(prefix)), options, true)
+	end, e := strinc(prefix)
+	if e != nil {
+		return RangeResult{err: e}
+	} else {
+		return s.getRangeSelector(FirstGreaterOrEqual(prefix), FirstGreaterOrEqual(end), options, true)
+	}
 }
 
 func (s Snapshot) GetReadVersion() FutureVersion {
