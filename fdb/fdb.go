@@ -161,7 +161,7 @@ const DefaultClusterFile string = ""
 // the FoundationDB cluster identified by the DefaultClusterFile on
 // the current machine. The FoundationDB client networking engine will
 // be initialized first, if necessary.
-func OpenDefault() (db Database, e error) {
+func OpenDefault() (Database, error) {
 	return Open(DefaultClusterFile, "DB")
 }
 
@@ -171,7 +171,7 @@ func OpenDefault() (db Database, e error) {
 // initialized first, if necessary.
 //
 // In the current release, the database name must be "DB".
-func Open(clusterFile string, dbName string) (db Database, e error) {
+func Open(clusterFile string, dbName string) (Database, error) {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
@@ -179,10 +179,12 @@ func Open(clusterFile string, dbName string) (db Database, e error) {
 		return Database{}, errorApiVersionUnset
 	}
 
+	var e error
+
 	if !networkStarted {
 		e = startNetwork()
 		if e != nil {
-			return
+			return Database{}, e
 		}
 	}
 
@@ -190,21 +192,21 @@ func Open(clusterFile string, dbName string) (db Database, e error) {
 	if !ok {
 		cluster, e = createCluster(clusterFile)
 		if e != nil {
-			return
+			return Database{}, e
 		}
 		openClusters[clusterFile] = cluster
 	}
 
-	db, ok = openDatabases[dbName]
+	db, ok := openDatabases[dbName]
 	if !ok {
 		db, e = cluster.OpenDatabase(dbName)
 		if e != nil {
-			return
+			return Database{}, e
 		}
 		openDatabases[dbName] = db
 	}
 
-	return
+	return db, nil
 }
 
 func createCluster(clusterFile string) (Cluster, error) {
