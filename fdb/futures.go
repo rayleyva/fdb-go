@@ -88,6 +88,8 @@ func (f *future) Cancel() {
 	C.fdb_future_cancel(f.ptr)
 }
 
+// FutureValue represents the asynchronous return value of a function
+// that returns a value. 
 type FutureValue struct {
 	*futureValue
 }
@@ -96,6 +98,36 @@ type futureValue struct {
 	*future
 	v   []byte
 	set bool
+}
+
+// These are implemented again so that they show up in the generated
+// documentation!
+
+// BlockUntilReady blocks the calling goroutine until the future is
+// ready. A future becomes ready either when it receives a value of
+// its enclosed type (if any) or is set to an error state.
+func (f *futureValue) BlockUntilReady() {
+	fdb_future_block_until_ready(f.ptr)
+}
+
+// IsReady returns true if the future is ready, and false otherwise,
+// without blocking. A future is ready either when has received a
+// value of its enclosed type (if any) or has been set to an error
+// state.
+func (f *futureValue) IsReady() bool {
+	return C.fdb_future_is_ready(f.ptr) != 0
+}
+
+// Cancel cancels a future and its associated asynchronous
+// operation. If called before the future becomes ready, attempts to
+// access the future will return an error. Cancel has no effect if the
+// future is already ready.
+//
+// Note that even if a future is not ready, the associated
+// asynchronous operation may already have completed and be unable to
+// be cancelled.
+func (f *futureValue) Cancel() {
+	C.fdb_future_cancel(f.ptr)
 }
 
 func (f FutureValue) GetWithError() ([]byte, error) {
@@ -141,6 +173,36 @@ type FutureKey struct {
 type futureKey struct {
 	*future
 	k []byte
+}
+
+// These are implemented again so that they show up in the generated
+// documentation!
+
+// BlockUntilReady blocks the calling goroutine until the future is
+// ready. A future becomes ready either when it receives a value of
+// its enclosed type (if any) or is set to an error state.
+func (f *futureKey) BlockUntilReady() {
+	fdb_future_block_until_ready(f.ptr)
+}
+
+// IsReady returns true if the future is ready, and false otherwise,
+// without blocking. A future is ready either when has received a
+// value of its enclosed type (if any) or has been set to an error
+// state.
+func (f *futureKey) IsReady() bool {
+	return C.fdb_future_is_ready(f.ptr) != 0
+}
+
+// Cancel cancels a future and its associated asynchronous
+// operation. If called before the future becomes ready, attempts to
+// access the future will return an error. Cancel has no effect if the
+// future is already ready.
+//
+// Note that even if a future is not ready, the associated
+// asynchronous operation may already have completed and be unable to
+// be cancelled.
+func (f *futureKey) Cancel() {
+	C.fdb_future_cancel(f.ptr)
 }
 
 func (f FutureKey) GetWithError() ([]byte, error) {

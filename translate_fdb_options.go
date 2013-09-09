@@ -28,6 +28,8 @@ import (
 	"log"
 	"strings"
 	"os"
+	"unicode"
+	"unicode/utf8"
 )
 
 type Option struct {
@@ -98,16 +100,24 @@ func translateName(old string) string {
 	return strings.Replace(strings.Title(strings.ToLower(strings.Replace(old, "_", " ", -1))), " ", "", -1)
 }
 
+func lowerFirst (s string) string {
+        if s == "" {
+                return ""
+        }
+        r, n := utf8.DecodeRuneInString(s)
+        return string(unicode.ToLower(r)) + s[n:]
+}
+
 func writeMutation(opt Option) {
+	desc := lowerFirst(opt.Description)
+	tname := translateName(opt.Name)
 	fmt.Printf(`
-// %s
-// Parameter: %s
+// %s %s
 func (t Transaction) %s(key []byte, param []byte) {
 	t.atomicOp(key, param, %d)
 }
 
-// %s
-// Parameter: %s
+// %s %s
 func (d Database) %s(key []byte, param []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.%s(key, param)
@@ -118,7 +128,7 @@ func (d Database) %s(key []byte, param []byte) error {
 	}
 	return nil
 }
-`, opt.Description, opt.ParamDesc, translateName(opt.Name), opt.Code, opt.Description, opt.ParamDesc, translateName(opt.Name), translateName(opt.Name))
+`, tname, desc, tname, opt.Code, tname, desc, tname, tname)
 }
 
 func writeEnum(scope Scope, opt Option, delta int) {

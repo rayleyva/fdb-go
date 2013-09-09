@@ -42,8 +42,8 @@ func notifyChannel(ch *chan struct{}) {
 	*ch <- struct{}{}
 }
 
-// An Error represents a low-level error returned by the FoundationDB
-// C library.
+// Error represents a low-level error returned by the FoundationDB C
+// library.
 type Error C.fdb_error_t
 
 // A Transactor represents an object that can execute a transactional
@@ -66,9 +66,13 @@ func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte) error {
 	return nil
 }
 
+// NetworkOptions is a handle with which to set options that affect
+// the entire FoundationDB client.
 type NetworkOptions struct {
 }
 
+// Options returns a NetworkOptions instance to use while setting
+// options that affect the entire FoundationDB client.
 func Options() NetworkOptions {
 	return NetworkOptions{}
 }

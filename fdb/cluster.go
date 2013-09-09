@@ -33,7 +33,8 @@ import (
 
 // Cluster is a handle to a FoundationDB cluster. It is generally
 // preferable to use Open or OpenDefault to obtain a database handle
-// directly.
+// directly. A Cluster is safe for concurrent use by multiple
+// goroutines.
 type Cluster struct {
 	*cluster
 }
