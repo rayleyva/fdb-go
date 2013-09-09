@@ -46,8 +46,8 @@ func (sm *StackMachine) waitAndPop() (ret stackEntry) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
-			case *fdb.Error:
-				p, e := tuple.Pack(tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r.Code())))})
+			case fdb.Error:
+				p, e := tuple.Pack(tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r)))})
 				if e != nil {
 					panic(e)
 				}
@@ -128,8 +128,8 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
-			case *fdb.Error:
-				p, e := tuple.Pack(tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r.Code())))})
+			case fdb.Error:
+				p, e := tuple.Pack(tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r)))})
 				if e != nil {
 					panic(e)
 				}
@@ -184,7 +184,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 			panic(e)
 		}
 	case "ON_ERROR":
-		sm.store(idx, sm.tr.OnError(fdb.NewError(int(sm.waitAndPop().item.(int64)))))
+		sm.store(idx, sm.tr.OnError(fdb.Error(int(sm.waitAndPop().item.(int64)))))
 	case "GET_READ_VERSION":
 		sm.lastVersion = obj.(fdb.ReadTransaction).GetReadVersion().GetOrPanic()
 		sm.store(idx, []byte("GOT_READ_VERSION"))
@@ -414,7 +414,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		db.Transact(func (tr fdb.Transaction) (interface{}, error) {
 			v := tr.GetRangeStartsWith(prefix, fdb.RangeOptions{}).GetSliceOrPanic()
 			if len(v) != 0 {
-				panic(fdb.NewError(1020))
+				panic(fdb.Error(1020))
 			}
 			return nil, nil
 		})

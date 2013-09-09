@@ -112,7 +112,7 @@ func (f FutureValue) GetWithError() ([]byte, error) {
 		if err == 2017 {
 			return f.v, nil
 		} else {
-			return nil, &Error{err}
+			return nil, Error(err)
 		}
 	}
 
@@ -156,7 +156,7 @@ func (f FutureKey) GetWithError() ([]byte, error) {
 		if err == 2017 {
 			return f.k, nil
 		} else {
-			return nil, &Error{err}
+			return nil, Error(err)
 		}
 	}
 
@@ -182,7 +182,7 @@ type FutureNil struct {
 func (f FutureNil) GetWithError() error {
 	fdb_future_block_until_ready(f.ptr)
 	if err := C.fdb_future_get_error(f.ptr); err != 0 {
-		return &Error{err}
+		return Error(err)
 	}
 
 	return nil
@@ -218,7 +218,7 @@ func (f *futureKeyValueArray) GetWithError() ([]KeyValue, bool, error) {
 	var more C.fdb_bool_t
 
 	if err := C.fdb_future_get_keyvalue_array(f.ptr, (**C.FDBKeyValue)(unsafe.Pointer(&kvs)), &count, &more); err != 0 {
-		return nil, false, &Error{err}
+		return nil, false, Error(err)
 	}
 
 	ret := make([]KeyValue, int(count))
@@ -243,7 +243,7 @@ func (f FutureVersion) GetWithError() (int64, error) {
 
 	var ver C.int64_t
 	if err := C.fdb_future_get_version(f.ptr, &ver); err != 0 {
-		return 0, &Error{err}
+		return 0, Error(err)
 	}
 	return int64(ver), nil
 }

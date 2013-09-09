@@ -23,10 +23,10 @@ package fdb
 
 // SOMEDAY: these (along with others) should be coming from fdb.options?
 const (
-	errorKeyOutsideLegalRange = 2004
-	errorNetworkNotSetup = 2008
+	errorKeyOutsideLegalRange = Error(2004)
+	errorNetworkNotSetup = Error(2008)
 
-	errorApiVersionUnset = 2200
-	errorApiVersionAlreadySet = 2201
-	errorApiVersionNotSupported = 2203
+	errorApiVersionUnset = Error(2200)
+	errorApiVersionAlreadySet = Error(2201)
+	errorApiVersionNotSupported = Error(2203)
 )

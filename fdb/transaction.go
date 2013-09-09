@@ -84,8 +84,8 @@ func makeFutureNil(fp *C.FDBFuture) FutureNil {
 	return FutureNil{f}
 }
 
-func (t Transaction) OnError(e *Error) FutureNil {
-	return makeFutureNil(C.fdb_transaction_on_error(t.ptr, e.code))
+func (t Transaction) OnError(e Error) FutureNil {
+	return makeFutureNil(C.fdb_transaction_on_error(t.ptr, C.fdb_error_t(e)))
 }
 
 func (t Transaction) Commit() FutureNil {
@@ -142,7 +142,7 @@ func strinc(prefix []byte) ([]byte, error) {
 		}
 	}
 
-	return nil, &Error{errorKeyOutsideLegalRange}
+	return nil, errorKeyOutsideLegalRange
 }
 
 func (t Transaction) GetRangeStartsWith(prefix []byte, options RangeOptions) RangeResult {
@@ -187,7 +187,7 @@ func (t Transaction) GetCommittedVersion() (int64, error) {
 	var version C.int64_t
 
 	if err := C.fdb_transaction_get_committed_version(t.ptr, &version); err != 0 {
-		return 0, &Error{err}
+		return 0, Error(err)
 	}
 
 	return int64(version), nil
@@ -221,7 +221,7 @@ func (t Transaction) atomicOp(key []byte, param []byte, code int) {
 
 func addConflictRange(t *transaction, begin []byte, end []byte, crtype conflictRangeType) error {
 	if err := C.fdb_transaction_add_conflict_range(t.ptr, byteSliceToPtr(begin), C.int(len(begin)), byteSliceToPtr(end), C.int(len(end)), C.FDBConflictRangeType(crtype)); err != 0 {
-		return &Error{err}
+		return Error(err)
 	}
 
 	return nil
