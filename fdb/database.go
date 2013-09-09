@@ -174,16 +174,6 @@ func (d Database) GetRangeSelector(begin KeySelector, end KeySelector, options R
 	return v.([]KeyValue), nil
 }
 
-func (d Database) GetRangeStartsWith(prefix []byte, options RangeOptions) ([]KeyValue, error) {
-	v, e := d.Transact(func (tr Transaction) (interface{}, error) {
-		return tr.GetRangeStartsWith(prefix, options).GetSliceOrPanic(), nil
-	})
-	if e != nil {
-		return nil, e
-	}
-	return v.([]KeyValue), nil
-}
-
 func (d Database) Set(key []byte, value []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.Set(key, value)
@@ -209,17 +199,6 @@ func (d Database) Clear(key []byte) error {
 func (d Database) ClearRange(begin []byte, end []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.ClearRange(begin, end)
-		return nil, nil
-	})
-	if e != nil {
-		return e
-	}
-	return nil
-}
-
-func (d Database) ClearRangeStartsWith(prefix []byte) error {
-	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
-		tr.ClearRangeStartsWith(prefix)
 		return nil, nil
 	})
 	if e != nil {

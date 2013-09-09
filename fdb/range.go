@@ -43,7 +43,6 @@ type RangeResult struct {
 	options RangeOptions
 	snapshot bool
 	f *futureKeyValueArray
-	err error
 }
 
 func (rr RangeResult) GetSliceWithError() ([]KeyValue, error) {
@@ -86,7 +85,6 @@ func (rr RangeResult) Iterator() *RangeIterator {
 		options: rr.options,
 		iteration: 1,
 		snapshot: rr.snapshot,
-		err: rr.err,
 	}
 }
 
@@ -170,4 +168,25 @@ func (ri *RangeIterator) GetNextOrPanic() KeyValue {
 		panic(e)
 	}
 	return kv
+}
+
+func strinc(prefix []byte) ([]byte, error) {
+	for i := len(prefix) - 1; i >= 0; i-- {
+		if prefix[i] != 0xFF {
+			ret := make([]byte, i+1)
+			copy(ret, prefix[:i+1])
+			ret[i] += 1
+			return ret, nil
+		}
+	}
+
+	return nil, errorKeyOutsideLegalRange
+}
+
+func PrefixRange(prefix []byte) ([]byte, []byte, error) {
+	end, e := strinc(prefix)
+	if e != nil {
+		return nil, nil, e
+	}
+	return prefix, end, nil
 }

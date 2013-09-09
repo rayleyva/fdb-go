@@ -325,15 +325,19 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		}
 		reverse := int64ToBool(sm.waitAndPop().item.(int64))
 		mode := sm.waitAndPop().item.(int64)
+		begin, end, e := fdb.PrefixRange(prefix)
+		if e != nil {
+			panic(e)
+		}
 		switch o := obj.(type) {
 		case fdb.Database:
-			v, e := db.GetRangeStartsWith(prefix, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)})
+			v, e := db.GetRange(begin, end, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)})
 			if e != nil {
 				panic(e)
 			}
 			sm.pushRange(idx, v)
 		case fdb.ReadTransaction:
-			sm.pushRange(idx, o.GetRangeStartsWith(prefix, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)}).GetSliceOrPanic())
+			sm.pushRange(idx, o.GetRange(begin, end, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)}).GetSliceOrPanic())
 		}
 	case "GET_RANGE_SELECTOR":
 		begin := fdb.KeySelector{Key: sm.waitAndPop().item.([]byte), OrEqual: int64ToBool(sm.waitAndPop().item.(int64)), Offset: int(sm.waitAndPop().item.(int64))}
@@ -357,15 +361,19 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		}
 	case "CLEAR_RANGE_STARTS_WITH":
 		prefix := sm.waitAndPop().item.([]byte)
+		begin, end, e := fdb.PrefixRange(prefix)
+		if e != nil {
+			panic(e)
+		}
 		switch o := obj.(type) {
 		case fdb.Database:
-			e := o.ClearRangeStartsWith(prefix)
+			e := o.ClearRange(begin, end)
 			if e != nil {
 				panic(e)
 			}
 			sm.store(idx, []byte("RESULT_NOT_PRESENT"))
 		case fdb.Transaction:
-			o.ClearRangeStartsWith(prefix)
+			o.ClearRange(begin, end)
 		}
 	case "TUPLE_PACK":
 		var t tuple.Tuple
@@ -411,8 +419,12 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		}()
 	case "WAIT_EMPTY":
 		prefix := sm.waitAndPop().item.([]byte)
+		begin, end, e := fdb.PrefixRange(prefix)
+		if e != nil {
+			panic(e)
+		}
 		db.Transact(func (tr fdb.Transaction) (interface{}, error) {
-			v := tr.GetRangeStartsWith(prefix, fdb.RangeOptions{}).GetSliceOrPanic()
+			v := tr.GetRange(begin, end, fdb.RangeOptions{}).GetSliceOrPanic()
 			if len(v) != 0 {
 				panic(fdb.Error(1020))
 			}

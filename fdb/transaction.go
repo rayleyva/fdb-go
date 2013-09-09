@@ -36,7 +36,6 @@ type ReadTransaction interface {
 	GetKey(sel KeySelector) FutureKey
 	GetRange(begin []byte, end []byte, options RangeOptions) RangeResult
 	GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) RangeResult
-	GetRangeStartsWith(prefix []byte, options RangeOptions) RangeResult
 	GetReadVersion() FutureVersion
 }
 
@@ -132,28 +131,6 @@ func (t Transaction) GetRange(begin []byte, end []byte, options RangeOptions) Ra
 	return t.getRangeSelector(FirstGreaterOrEqual(begin), FirstGreaterOrEqual(end), options, false)
 }
 
-func strinc(prefix []byte) ([]byte, error) {
-	for i := len(prefix) - 1; i >= 0; i-- {
-		if prefix[i] != 0xFF {
-			ret := make([]byte, i+1)
-			copy(ret, prefix[:i+1])
-			ret[i] += 1
-			return ret, nil
-		}
-	}
-
-	return nil, errorKeyOutsideLegalRange
-}
-
-func (t Transaction) GetRangeStartsWith(prefix []byte, options RangeOptions) RangeResult {
-	end, e := strinc(prefix)
-	if e != nil {
-		return RangeResult{err: e}
-	} else {
-		return t.getRangeSelector(FirstGreaterOrEqual(prefix), FirstGreaterOrEqual(end), options, false)
-	}
-}
-
 func (t *transaction) getReadVersion() FutureVersion {
 	f := &future{C.fdb_transaction_get_read_version(t.ptr)}
 	runtime.SetFinalizer(f, (*future).destroy)
@@ -174,13 +151,6 @@ func (t Transaction) Clear(key []byte) {
 
 func (t Transaction) ClearRange(begin []byte, end []byte) {
 	C.fdb_transaction_clear_range(t.ptr, byteSliceToPtr(begin), C.int(len(begin)), byteSliceToPtr(end), C.int(len(end)))
-}
-
-func (t Transaction) ClearRangeStartsWith(prefix []byte) {
-	end, e := strinc(prefix)
-	if e == nil {
-		C.fdb_transaction_clear_range(t.ptr, byteSliceToPtr(prefix), C.int(len(prefix)), byteSliceToPtr(end), C.int(len(end)))
-	}
 }
 
 func (t Transaction) GetCommittedVersion() (int64, error) {
@@ -265,15 +235,6 @@ func (s Snapshot) GetRangeSelector(begin KeySelector, end KeySelector, options R
 
 func (s Snapshot) GetRange(begin []byte, end []byte, options RangeOptions) RangeResult {
 	return s.getRangeSelector(FirstGreaterOrEqual(begin), FirstGreaterOrEqual(end), options, true)
-}
-
-func (s Snapshot) GetRangeStartsWith(prefix []byte, options RangeOptions) RangeResult {
-	end, e := strinc(prefix)
-	if e != nil {
-		return RangeResult{err: e}
-	} else {
-		return s.getRangeSelector(FirstGreaterOrEqual(prefix), FirstGreaterOrEqual(end), options, true)
-	}
 }
 
 func (s Snapshot) GetReadVersion() FutureVersion {
