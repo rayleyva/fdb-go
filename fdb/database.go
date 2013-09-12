@@ -31,12 +31,13 @@ import (
 	"runtime"
 )
 
-// Database is a handle to a FoundationDB database. Although Database
-// provides convenience methods for reading and writing data,
-// modifications to a database are usually made via transactions,
-// which are usually created and committed automatically by the
-// Transact method. A Database is safe for concurrent use by multiple
-// goroutines.
+// Database is a handle to a FoundationDB database. Database is a lightweight
+// object that may be efficiently copied, and is safe for concurrent use by
+// multiple goroutines.
+//
+// Although Database provides convenience methods for reading and writing data,
+// modifications to a database are usually made via transactions, which are
+// usually created and committed automatically by the Transact method.
 type Database struct {
 	*database
 }
@@ -45,9 +46,9 @@ type database struct {
 	ptr *C.FDBDatabase
 }
 
-// DatabaseOptions is a handle with which to set options that affect a
-// Database object. A DatabaseOptions instance should be obtained with
-// the Database.Options method.
+// DatabaseOptions is a handle with which to set options that affect a Database
+// object. A DatabaseOptions instance should be obtained with the
+// (Database).Options method.
 type DatabaseOptions struct {
 	d *database
 }
@@ -62,10 +63,9 @@ func (d *database) destroy() {
 	C.fdb_database_destroy(d.ptr)
 }
 
-// CreateTransaction returns a new FoundationDB transaction. It is
-// generally preferable to use the Transact method, which handles
-// committing a transaction with appropriate retry behavior. A
-// Transaction is safe for concurrent use by multiple goroutines.
+// CreateTransaction returns a new FoundationDB transaction. It is generally
+// preferable to use the (Database).Transact method, which handles automatically
+// creating and committing a transaction with appropriate retry behavior.
 func (d Database) CreateTransaction() (Transaction, error) {
 	var outt *C.FDBTransaction
 
@@ -79,17 +79,16 @@ func (d Database) CreateTransaction() (Transaction, error) {
 	return Transaction{t}, nil
 }
 
-// Transact runs a caller-provided function inside a retry loop,
-// providing it with a newly created transaction. After the function
-// returns, the transaction will be committed automatically. Any error
-// during execution of the caller's function (by panic or return) or
-// the commit will cause the entire transaction to be retried or, if
-// fatal, return the error to the caller.
+// Transact runs a caller-provided function inside a retry loop, providing it
+// with a newly created transaction. After the function returns, the transaction
+// will be committed automatically. Any error during execution of the caller's
+// function (by panic or return) or the commit will cause the entire transaction
+// to be retried or, if fatal, return the error to the caller.
 //
-// When working with fdb Future objects in a transactional function,
-// it is easiest to use the GetOrPanic method, rather than
-// GetWithError. The Transact method will recover a panicked fdb.Error
-// and retry the transaction or return the error, as appropriate.
+// When working with fdb Future objects in a transactional fucntion, you may
+// either explicity check and return error values from (Future).GetWithError, or
+// call (Future).GetOrPanic. The Transact method will recover a panicked
+// fdb.Error and either retry the transaction or return the error.
 func (d Database) Transact(f func(tr Transaction) (interface{}, error)) (ret interface{}, e error) {
 	tr, e := d.CreateTransaction()
 	/* Any error here is non-retryable */
@@ -139,9 +138,8 @@ func (d Database) Transact(f func(tr Transaction) (interface{}, error)) (ret int
 	}
 }
 
-// Get returns the value associated with the specified key (or nil if
-// the key does not exist). This read blocks the current goroutine
-// until complete.
+// Get returns the value associated with the specified key (or nil if the key
+// does not exist). This read blocks the current goroutine until complete.
 func (d Database) Get(key []byte) ([]byte, error) {
 	v, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		return tr.Get(key).GetOrPanic(), nil
@@ -152,8 +150,8 @@ func (d Database) Get(key []byte) ([]byte, error) {
 	return v.([]byte), nil
 }
 
-// GetKey returns the key referenced by the specified key
-// selector. This read blocks the current goroutine until complete.
+// GetKey returns the key referenced by the specified key selector. This read
+// blocks the current goroutine until complete.
 func (d Database) GetKey(sel KeySelector) ([]byte, error) {
 	v, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		return tr.GetKey(sel).GetOrPanic(), nil
@@ -164,9 +162,8 @@ func (d Database) GetKey(sel KeySelector) ([]byte, error) {
 	return v.([]byte), nil
 }
 
-// GetRange returns a slice of KeyValue objects kv where begin <=
-// kv.Key < end, ordered by kv.Key. This read blocks the current
-// goroutine until complete.
+// GetRange returns a slice of KeyValue objects kv where begin <= kv.Key < end,
+// ordered by kv.Key. This read blocks the current goroutine until complete.
 func (d Database) GetRange(begin []byte, end []byte, options RangeOptions) ([]KeyValue, error) {
 	v, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		return tr.GetRange(begin, end, options).GetSliceOrPanic(), nil
@@ -177,10 +174,10 @@ func (d Database) GetRange(begin []byte, end []byte, options RangeOptions) ([]Ke
 	return v.([]KeyValue), nil
 }
 
-// GetRangeSelector returns a slice of KeyValue objects kv where begin
-// <= kv.Key < end, ordered by kv.Key. Begin and end are the keys
-// referenced by the key selectors beginSel and endSel. This read
-// blocks the current goroutine until complete.
+// GetRangeSelector returns a slice of KeyValue objects kv where begin <= kv.Key
+// < end, ordered by kv.Key. Begin and end are the keys referenced by the key
+// selectors beginSel and endSel. This read blocks the current goroutine until
+// complete.
 func (d Database) GetRangeSelector(beginSel KeySelector, endSel KeySelector, options RangeOptions) ([]KeyValue, error) {
 	v, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		return tr.GetRangeSelector(beginSel, endSel, options).GetSliceOrPanic(), nil
@@ -191,9 +188,9 @@ func (d Database) GetRangeSelector(beginSel KeySelector, endSel KeySelector, opt
 	return v.([]KeyValue), nil
 }
 
-// Set associates the specified key and value, overwriting any
-// previous value associated with key. This change will be committed
-// immediately and blocks the current goroutine until complete.
+// Set associates the specified key and value, overwriting any previous value
+// associated with key. This change will be committed immediately and blocks the
+// current goroutine until complete.
 func (d Database) Set(key []byte, value []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.Set(key, value)
@@ -206,8 +203,8 @@ func (d Database) Set(key []byte, value []byte) error {
 }
 
 // Clear removes the specified key (and any associated value), if it
-// exists. This change will be committed immediately and blocks the
-// current goroutine until complete.
+// exists. This change will be committed immediately and blocks the current
+// goroutine until complete.
 func (d Database) Clear(key []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.Clear(key)
@@ -219,9 +216,9 @@ func (d Database) Clear(key []byte) error {
 	return nil
 }
 
-// ClearRange removes all keys k where begin <= k < end, and their
-// associated values. This change will be committed immediately and
-// blocks the current goroutine until complete.
+// ClearRange removes all keys k where begin <= k < end, and their associated
+// values. This change will be committed immediately and blocks the current
+// goroutine until complete.
 func (d Database) ClearRange(begin []byte, end []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.ClearRange(begin, end)
@@ -233,10 +230,10 @@ func (d Database) ClearRange(begin []byte, end []byte) error {
 	return nil
 }
 
-// GetAndWatch returns the value associated with the specified key (or
-// nil if the key does not exist), along with a future that will
-// become ready when the value associated with the key changes. This
-// read blocks the current goroutine until complete.
+// GetAndWatch returns the value associated with the specified key (or nil if
+// the key does not exist), along with a future that will become ready when the
+// value associated with the key changes. This read blocks the current goroutine
+// until complete.
 func (d Database) GetAndWatch(key []byte) ([]byte, FutureNil, error) {
 	r, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		v := tr.Get(key).GetOrPanic()
@@ -251,11 +248,10 @@ func (d Database) GetAndWatch(key []byte) ([]byte, FutureNil, error) {
 	return ret.value, ret.watch, nil
 }
 
-// SetAndWatch associates the specified key and value, overwriting any
-// previous value associated with key, and returns a future that will
-// become ready when the value associated with the key changes. This
-// change will be committed immediately and blocks the current
-// goroutine until complete.
+// SetAndWatch associates the specified key and value, overwriting any previous
+// value associated with key, and returns a future that will become ready when
+// the value associated with the key changes. This change will be committed
+// immediately and blocks the current goroutine until complete.
 func (d Database) SetAndWatch(key []byte, value []byte) (FutureNil, error) {
 	r, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.Set(key, value)
@@ -267,10 +263,10 @@ func (d Database) SetAndWatch(key []byte, value []byte) (FutureNil, error) {
 	return r.(FutureNil), nil
 }
 
-// Clear removes the specified key (and any associated value), if it
-// exists, and returns a future that will become ready when the value
-// associated with the key changes. This change will be committed
-// immediately and blocks the current goroutine until complete.
+// Clear removes the specified key (and any associated value), if it exists, and
+// returns a future that will become ready when the value associated with the
+// key changes. This change will be committed immediately and blocks the current
+// goroutine until complete.
 func (d Database) ClearAndWatch(key []byte) (FutureNil, error) {
 	r, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.Clear(key)
@@ -282,8 +278,8 @@ func (d Database) ClearAndWatch(key []byte) (FutureNil, error) {
 	return r.(FutureNil), nil
 }
 
-// Options returns a DatabaseOptions instance to use while setting
-// options specific to this database.
+// Options returns a DatabaseOptions instance to suitable for setting options
+// specific to this database.
 func (d Database) Options() DatabaseOptions {
 	return DatabaseOptions{d.database}
 }

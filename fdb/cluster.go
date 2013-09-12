@@ -31,10 +31,9 @@ import (
 	"runtime"
 )
 
-// Cluster is a handle to a FoundationDB cluster. It is generally
-// preferable to use Open or OpenDefault to obtain a database handle
-// directly. A Cluster is safe for concurrent use by multiple
-// goroutines.
+// Cluster is a handle to a FoundationDB cluster. It is generally preferable to
+// use Open or OpenDefault to obtain a database handle directly. A Cluster is
+// safe for concurrent use by multiple goroutines.
 type Cluster struct {
 	*cluster
 }
@@ -47,9 +46,9 @@ func (c *cluster) destroy() {
 	C.fdb_cluster_destroy(c.ptr)
 }
 
-// OpenDatabase returns a database handle from the FoundationDB
-// cluster. It is generally preferable to use Open or OpenDefault to
-// obtain a database handle directly.
+// OpenDatabase returns a database handle from the FoundationDB cluster. It is
+// generally preferable to use Open or OpenDefault to obtain a database handle
+// directly.
 //
 // In the current release, the database name must be "DB".
 func (c Cluster) OpenDatabase(dbName string) (Database, error) {
