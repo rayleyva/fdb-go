@@ -23,13 +23,11 @@ func int64ToBytes(i int64) ([]byte, error) {
 }
 
 // Enables trace output to a file in a directory of the clients choosing
-// Parameter: path to output directory (or NULL for current working directory)
 func (o NetworkOptions) SetTraceEnable(param string) error {
 	return o.setOpt(30, []byte(param))
 }
 
 // Set the size of the client location cache. Raising this value can boost performance in very large databases where clients access data in a near-random pattern. Defaults to 100000.
-// Parameter: Max location cache entries
 func (o DatabaseOptions) SetLocationCacheSize(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
@@ -39,7 +37,6 @@ func (o DatabaseOptions) SetLocationCacheSize(param int64) error {
 }
 
 // Set the maximum number of watches allowed to be outstanding on a database connection. Increasing this number could result in increased resource usage. Reducing this number will not cancel any outstanding watches. Defaults to 10000 and cannot be larger than 1000000.
-// Parameter: Max outstanding watches
 func (o DatabaseOptions) SetMaxWatches(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
@@ -49,13 +46,11 @@ func (o DatabaseOptions) SetMaxWatches(param int64) error {
 }
 
 // Specify the machine ID that was passed to fdbserver processes running on the same machine as this client, for better location-aware load balancing.
-// Parameter: Hexadecimal ID
 func (o DatabaseOptions) SetMachineId(param string) error {
 	return o.setOpt(21, []byte(param))
 }
 
 // Specify the datacenter ID that was passed to fdbserver processes running in the same datacenter as this client, for better location-aware load balancing.
-// Parameter: Hexadecimal ID
 func (o DatabaseOptions) SetDatacenterId(param string) error {
 	return o.setOpt(22, []byte(param))
 }
@@ -130,7 +125,6 @@ func (o TransactionOptions) SetDebugDump() error {
 }
 
 // Set a timeout in milliseconds which, when elapsed, will cause the transaction automatically to be cancelled. Valid parameter values are ``[0, INT_MAX]``. If set to 0, will disable all timeouts. All pending and any future uses of the transaction will throw an exception. The transaction can be used again after it is reset.
-// Parameter: value in milliseconds of timeout
 func (o TransactionOptions) SetTimeout(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
@@ -140,7 +134,6 @@ func (o TransactionOptions) SetTimeout(param int64) error {
 }
 
 // Set a maximum number of retries after which additional calls to onError will throw the most recently seen error code. Valid parameter values are ``[-1, INT_MAX]``. If set to -1, will disable the retry limit.
-// Parameter: number of times to retry
 func (o TransactionOptions) SetRetryLimit(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
@@ -151,19 +144,46 @@ func (o TransactionOptions) SetRetryLimit(param int64) error {
 
 type StreamingMode int
 const (
-	// Client intends to consume the entire range and would like it all transferred as early as possible.
+
+    // Client intends to consume the entire range and would like it all
+    // transferred as early as possible.
 	StreamingModeWantAll StreamingMode = -1
-	// The default. The client doesn't know how much of the range it is likely to used and wants different performance concerns to be balanced. Only a small portion of data is transferred to the client initially (in order to minimize costs if the client doesn't read the entire range), and as the caller iterates over more items in the range larger batches will be transferred in order to minimize latency.
+
+    // The default. The client doesn't know how much of the range it is likely
+    // to used and wants different performance concerns to be balanced. Only a
+    // small portion of data is transferred to the client initially (in order to
+    // minimize costs if the client doesn't read the entire range), and as the
+    // caller iterates over more items in the range larger batches will be
+    // transferred in order to minimize latency.
 	StreamingModeIterator StreamingMode = 0
-	// Infrequently used. The client has passed a specific row limit and wants that many rows delivered in a single batch. Because of iterator operation in client drivers make request batches transparent to the user, consider ``WANT_ALL`` StreamingMode instead. A row limit must be specified if this mode is used.
+
+    // Infrequently used. The client has passed a specific row limit and wants
+    // that many rows delivered in a single batch. Because of iterator operation
+    // in client drivers make request batches transparent to the user, consider
+    // ``WANT_ALL`` StreamingMode instead. A row limit must be specified if this
+    // mode is used.
 	StreamingModeExact StreamingMode = 1
-	// Infrequently used. Transfer data in batches small enough to not be much more expensive than reading individual rows, to minimize cost if iteration stops early.
+
+    // Infrequently used. Transfer data in batches small enough to not be much
+    // more expensive than reading individual rows, to minimize cost if
+    // iteration stops early.
 	StreamingModeSmall StreamingMode = 2
-	// Infrequently used. Transfer data in batches sized in between small and large.
+
+    // Infrequently used. Transfer data in batches sized in between small and
+    // large.
 	StreamingModeMedium StreamingMode = 3
-	// Infrequently used. Transfer data in batches large enough to be, in a high-concurrency environment, nearly as efficient as possible. If the client stops iteration early, some disk and network bandwidth may be wasted. The batch size may still be too small to allow a single client to get high throughput from the database, so if that is what you need consider the SERIAL StreamingMode.
+
+    // Infrequently used. Transfer data in batches large enough to be, in a
+    // high-concurrency environment, nearly as efficient as possible. If the
+    // client stops iteration early, some disk and network bandwidth may be
+    // wasted. The batch size may still be too small to allow a single client to
+    // get high throughput from the database, so if that is what you need
+    // consider the SERIAL StreamingMode.
 	StreamingModeLarge StreamingMode = 4
-	// Transfer data in batches large enough that an individual client can get reasonable read bandwidth from the database. If the client stops iteration early, considerable disk and network bandwidth may be wasted.
+
+    // Transfer data in batches large enough that an individual client can get
+    // reasonable read bandwidth from the database. If the client stops
+    // iteration early, considerable disk and network bandwidth may be wasted.
 	StreamingModeSerial StreamingMode = 5
 )
 
@@ -237,8 +257,10 @@ func (d Database) Xor(key []byte, param []byte) error {
 
 type conflictRangeType int
 const (
-	// Used to add a read conflict range
+
+    // Used to add a read conflict range
 	conflictRangeTypeRead conflictRangeType = 0
-	// Used to add a write conflict range
+
+    // Used to add a write conflict range
 	conflictRangeTypeWrite conflictRangeType = 1
 )

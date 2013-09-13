@@ -31,9 +31,12 @@ import (
 	"runtime"
 )
 
-// Cluster is a handle to a FoundationDB cluster. It is generally preferable to
-// use Open or OpenDefault to obtain a database handle directly. A Cluster is
-// safe for concurrent use by multiple goroutines.
+// Cluster is a handle to a FoundationDB cluster. Cluster is a lightweight
+// object that may be efficiently copied, and is safe for concurrent use by
+// multiple goroutines.
+//
+// It is generally preferable to use Open or OpenDefault to obtain a database
+// handle directly.
 type Cluster struct {
 	*cluster
 }

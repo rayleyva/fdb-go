@@ -61,35 +61,33 @@ func fdb_future_block_until_ready(f *C.FDBFuture) {
 	<-ch
 }
 
-// BlockUntilReady blocks the calling goroutine until the future is
-// ready. A future becomes ready either when it receives a value of
-// its enclosed type (if any) or is set to an error state.
+// BlockUntilReady blocks the calling goroutine until the future is ready. A
+// future becomes ready either when it receives a value of its enclosed type (if
+// any) or is set to an error state.
 func (f *future) BlockUntilReady() {
 	fdb_future_block_until_ready(f.ptr)
 }
 
-// IsReady returns true if the future is ready, and false otherwise,
-// without blocking. A future is ready either when has received a
-// value of its enclosed type (if any) or has been set to an error
-// state.
+// IsReady returns true if the future is ready, and false otherwise, without
+// blocking. A future is ready either when has received a value of its enclosed
+// type (if any) or has been set to an error state.
 func (f *future) IsReady() bool {
 	return C.fdb_future_is_ready(f.ptr) != 0
 }
 
-// Cancel cancels a future and its associated asynchronous
-// operation. If called before the future becomes ready, attempts to
-// access the future will return an error. Cancel has no effect if the
-// future is already ready.
+// Cancel cancels a future and its associated asynchronous operation. If called
+// before the future becomes ready, attempts to access the future will return an
+// error. Cancel has no effect if the future is already ready.
 //
-// Note that even if a future is not ready, the associated
-// asynchronous operation may already have completed and be unable to
-// be cancelled.
+// Note that even if a future is not ready, the associated asynchronous
+// operation may already have completed and be unable to be cancelled.
 func (f *future) Cancel() {
 	C.fdb_future_cancel(f.ptr)
 }
 
-// FutureValue represents the asynchronous return value of a function
-// that returns a value. 
+// FutureValue represents the asynchronous result of a function that returns a
+// value from a database. FutureValue is a lightweight object that may be
+// efficiently copied, and is safe for concurrent use by multiple goroutines.
 type FutureValue struct {
 	*futureValue
 }
@@ -103,33 +101,34 @@ type futureValue struct {
 // These are implemented again so that they show up in the generated
 // documentation!
 
-// BlockUntilReady blocks the calling goroutine until the future is
-// ready. A future becomes ready either when it receives a value of
-// its enclosed type (if any) or is set to an error state.
+// BlockUntilReady blocks the calling goroutine until the future is ready. A
+// future becomes ready either when it receives a value of its enclosed type (if
+// any) or is set to an error state.
 func (f *futureValue) BlockUntilReady() {
 	fdb_future_block_until_ready(f.ptr)
 }
 
-// IsReady returns true if the future is ready, and false otherwise,
-// without blocking. A future is ready either when has received a
-// value of its enclosed type (if any) or has been set to an error
-// state.
+// IsReady returns true if the future is ready, and false otherwise, without
+// blocking. A future is ready either when has received a value of its enclosed
+// type (if any) or has been set to an error state.
 func (f *futureValue) IsReady() bool {
 	return C.fdb_future_is_ready(f.ptr) != 0
 }
 
-// Cancel cancels a future and its associated asynchronous
-// operation. If called before the future becomes ready, attempts to
-// access the future will return an error. Cancel has no effect if the
-// future is already ready.
+// Cancel cancels a future and its associated asynchronous operation. If called
+// before the future becomes ready, attempts to access the future will return an
+// error. Cancel has no effect if the future is already ready.
 //
-// Note that even if a future is not ready, the associated
-// asynchronous operation may already have completed and be unable to
-// be cancelled.
+// Note that even if a future is not ready, the associated asynchronous
+// operation may already have completed and be unable to be cancelled.
 func (f *futureValue) Cancel() {
 	C.fdb_future_cancel(f.ptr)
 }
 
+// GetWithError returns a database value (or nil if there is no value), or an
+// error if the asynchronous operation associated with this future did not
+// successfully complete. The current goroutine will be blocked until the future
+// is ready.
 func (f FutureValue) GetWithError() ([]byte, error) {
 	if f.set {
 		return f.v, nil
@@ -158,6 +157,10 @@ func (f FutureValue) GetWithError() ([]byte, error) {
 	return f.v, nil
 }
 
+// GetOrPanic returns a database value (or nil if there is no value), or panics
+// if the asynchronous operation associated with this future did not
+// successfully complete. The current goroutine will be blocked until the future
+// is ready.
 func (f FutureValue) GetOrPanic() []byte {
 	val, err := f.GetWithError()
 	if err != nil {
@@ -166,6 +169,9 @@ func (f FutureValue) GetOrPanic() []byte {
 	return val
 }
 
+// FutureKey represents the asynchronous result of a function that returns a key
+// from a database. FutureKey is a lightweight object that may be efficiently
+// copied, and is safe for concurrent use by multiple goroutines.
 type FutureKey struct {
 	*futureKey
 }
@@ -205,6 +211,9 @@ func (f *futureKey) Cancel() {
 	C.fdb_future_cancel(f.ptr)
 }
 
+// GetWithError returns a database key or an error if the asynchronous operation
+// associated with this future did not successfully complete. The current
+// goroutine will be blocked until the future is ready.
 func (f FutureKey) GetWithError() ([]byte, error) {
 	if f.k != nil {
 		return f.k, nil
@@ -229,6 +238,9 @@ func (f FutureKey) GetWithError() ([]byte, error) {
 	return f.k, nil
 }
 
+// GetOrPanic returns a database key, or panics if the asynchronous operation
+// associated with this future did not successfully complete. The current
+// goroutine will be blocked until the future is ready.
 func (f FutureKey) GetOrPanic() []byte {
 	val, err := f.GetWithError()
 	if err != nil {
@@ -237,10 +249,16 @@ func (f FutureKey) GetOrPanic() []byte {
 	return val
 }
 
+// FutureNil represents the asynchronous result of a function that has no return
+// value. FutureNil is a lightweight object that may be efficiently copied, and
+// is safe for concurrent use by multiple goroutines.
 type FutureNil struct {
 	*future
 }
 
+// GetWithError returns an error if the asynchronous operation associated with
+// this future did not successfully complete. The current goroutine will be
+// blocked until the future is ready.
 func (f FutureNil) GetWithError() error {
 	fdb_future_block_until_ready(f.ptr)
 	if err := C.fdb_future_get_error(f.ptr); err != 0 {
@@ -250,6 +268,9 @@ func (f FutureNil) GetWithError() error {
 	return nil
 }
 
+// GetOrPanic panics if the asynchronous operation associated with this future
+// did not successfully complete. The current goroutine will be blocked until
+// the future is ready.
 func (f FutureNil) GetOrPanic() {
 	if err := f.GetWithError(); err != nil {
 		panic(err)
@@ -296,10 +317,16 @@ func (f *futureKeyValueArray) GetWithError() ([]KeyValue, bool, error) {
  	return ret, (more != 0), nil
 }
 
+// FutureVersion represents the asynchronous result of a function that returns a
+// database version. FutureVersion is a lightweight object that may be
+// efficiently copied, and is safe for concurrent use by multiple goroutines.
 type FutureVersion struct {
 	*future
 }
 
+// GetWithError returns a database version or an error if the asynchronous
+// operation associated with this future did not successfully complete. The
+// current goroutine will be blocked until the future is ready.
 func (f FutureVersion) GetWithError() (int64, error) {
 	fdb_future_block_until_ready(f.ptr)
 
@@ -310,6 +337,9 @@ func (f FutureVersion) GetWithError() (int64, error) {
 	return int64(ver), nil
 }
 
+// GetOrPanic returns a database version, or panics if the asynchronous
+// operation associated with this future did not successfully complete. The
+// current goroutine will be blocked until the future is ready.
 func (f FutureVersion) GetOrPanic() int64 {
 	val, err := f.GetWithError()
 	if err != nil {

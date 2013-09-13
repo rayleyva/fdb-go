@@ -27,16 +27,36 @@ package fdb
 */
 import "C"
 
+// KeyValue represents a single key-value pair in the database.
 type KeyValue struct {
 	Key, Value []byte
 }
 
+// RangeOptions specify how a database range read operation is carried
+// out. RangeOptions objects are passed to GetRange and GetRangeSelector
+// methods.
+//
+// The zero value of RangeOptions represents the default range read
+// configuration (no limit, lexicographic order, to be used as an iterator).
 type RangeOptions struct {
+
+	// Limit restricts the number of key-value pairs returned as part of a range
+	// read. A value of 0 indicates no limit.
 	Limit int
+
+	// Mode sets the streaming mode of the range read, allowing the database to
+	// balance latency and bandwidth for this read.
 	Mode StreamingMode
+
+	// Reverse indicates that the read should be performed in lexicographic
+	// (false) or reverse lexicographic (true) order. When Reverse is true and
+	// Limit is non-zero, the last Limit key-value pairs in the range are
+	// returned.
 	Reverse bool
 }
 
+// RangeResult is a handle to the asynchronous result of a range
+// read. RangeResult is safe for concurrent use by multiple goroutines.
 type RangeResult struct {
 	t *transaction
 	begin, end KeySelector
@@ -45,6 +65,10 @@ type RangeResult struct {
 	f *futureKeyValueArray
 }
 
+// GetSliceWithError returns a slice of KeyValue objects satisfying the range
+// specified in the read that returned this RangeResult, or an error if any of
+// the asynchronous operations associated with this result did not successfully
+// complete. The current goroutine will be blocked until the read has completed.
 func (rr RangeResult) GetSliceWithError() ([]KeyValue, error) {
 	var ret []KeyValue
 
@@ -68,6 +92,10 @@ func (rr RangeResult) GetSliceWithError() ([]KeyValue, error) {
 	return ret, nil
 }
 
+// GetSliceOrPanic returns a slice of KeyValue objects satisfying the range
+// specified in the read that returned this RangeResult, or panics if any of the
+// asynchronous operations associated with this result did not successfully
+// complete. The current goroutine will be blocked until the read has completed.
 func (rr RangeResult) GetSliceOrPanic() []KeyValue {
 	kvs, e := rr.GetSliceWithError()
 	if e != nil {
@@ -76,6 +104,8 @@ func (rr RangeResult) GetSliceOrPanic() []KeyValue {
 	return kvs
 }
 
+// Iterator returns a RangeIterator over the key-value pairs satisfying the
+// range specified in the read that returned this RangeResult.
 func (rr RangeResult) Iterator() *RangeIterator {
 	return &RangeIterator{
 		t: rr.t,
@@ -88,6 +118,12 @@ func (rr RangeResult) Iterator() *RangeIterator {
 	}
 }
 
+// RangeIterator returns the key-value pairs in the database (as KeyValue
+// objects) satisfying the range specified in a range read. RangeIterator is
+// constructed with the (RangeResult).Iterator method.
+//
+// RangeIterator should not be copied or used concurrently from multiple
+// goroutines.
 type RangeIterator struct {
 	t *transaction
 	f *futureKeyValueArray
@@ -102,6 +138,9 @@ type RangeIterator struct {
 	snapshot bool
 }
 
+// Advance attempts to advance the iterator to the next key-value pair. Advance
+// returns true if there are more key-value pairs satisfying the range, or false
+// if the range has been exhausted.
 func (ri *RangeIterator) Advance() bool {
 	if ri.done {
 		return false
@@ -145,6 +184,10 @@ func (ri *RangeIterator) fetchNextBatch() {
 	ri.f = &f
 }
 
+// GetNextWithError returns the next KeyValue in a range read, or an error if
+// one of the asynchronous operations associated with this range did not
+// successfully complete. The Advance method of this RangeIterator must have
+// returned true prior to calling GetNextWithError.
 func (ri *RangeIterator) GetNextWithError() (kv KeyValue, e error) {
 	if ri.err != nil {
 		e = ri.err
@@ -162,6 +205,10 @@ func (ri *RangeIterator) GetNextWithError() (kv KeyValue, e error) {
 	return
 }
 
+// GetNextOrPanic returns the next KeyValue in a range read, or panics if one of
+// the asynchronous operations associated with this range did not successfully
+// complete. The Advance method of this RangeIterator must have returned true
+// prior to calling GetNextWithError.
 func (ri *RangeIterator) GetNextOrPanic() KeyValue {
 	kv, e := ri.GetNextWithError()
 	if e != nil {
@@ -183,6 +230,8 @@ func strinc(prefix []byte) ([]byte, error) {
 	return nil, errorKeyOutsideLegalRange
 }
 
+// PrefixRange returns the begin and end key that describe the range of keys
+// that begin with the provided prefix.
 func PrefixRange(prefix []byte) ([]byte, []byte, error) {
 	end, e := strinc(prefix)
 	if e != nil {

@@ -37,7 +37,8 @@ import (
 //
 // Although Database provides convenience methods for reading and writing data,
 // modifications to a database are usually made via transactions, which are
-// usually created and committed automatically by the Transact method.
+// usually created and committed automatically by the (Database).Transact
+// method.
 type Database struct {
 	*database
 }
@@ -87,8 +88,8 @@ func (d Database) CreateTransaction() (Transaction, error) {
 //
 // When working with fdb Future objects in a transactional fucntion, you may
 // either explicity check and return error values from (Future).GetWithError, or
-// call (Future).GetOrPanic. The Transact method will recover a panicked
-// fdb.Error and either retry the transaction or return the error.
+// call (Future).GetOrPanic. Transact will recover a panicked fdb.Error and
+// either retry the transaction or return the error.
 func (d Database) Transact(f func(tr Transaction) (interface{}, error)) (ret interface{}, e error) {
 	tr, e := d.CreateTransaction()
 	/* Any error here is non-retryable */
@@ -278,7 +279,7 @@ func (d Database) ClearAndWatch(key []byte) (FutureNil, error) {
 	return r.(FutureNil), nil
 }
 
-// Options returns a DatabaseOptions instance to suitable for setting options
+// Options returns a DatabaseOptions instance suitable for setting options
 // specific to this database.
 func (d Database) Options() DatabaseOptions {
 	return DatabaseOptions{d.database}

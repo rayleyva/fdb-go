@@ -42,20 +42,18 @@ func notifyChannel(ch *chan struct{}) {
 	*ch <- struct{}{}
 }
 
-// Error represents a low-level error returned by the FoundationDB C
-// library.
+// Error represents a low-level error returned by the FoundationDB C library.
 type Error C.fdb_error_t
-
-// A Transactor represents an object that can execute a transactional
-// function. Functions that accept a Transactor can be called with
-// either a Database or a Transaction to enable transactional
-// composition.
-type Transactor interface {
-	Transact(func (tr Transaction) (interface{}, error)) (interface{}, error)
-}
 
 func (e Error) Error() string {
 	return fmt.Sprintf("FDB Error: %s (%d)", C.GoString(C.fdb_get_error(C.fdb_error_t(e))), e)
+}
+
+// A Transactor represents an object that can execute a transactional
+// function. Functions that receive a Transactor can be called with either a
+// Database or a Transaction, allowing them to be composed transactionally.
+type Transactor interface {
+	Transact(func (tr Transaction) (interface{}, error)) (interface{}, error)
 }
 
 func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte) error {
@@ -66,13 +64,14 @@ func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte) error {
 	return nil
 }
 
-// NetworkOptions is a handle with which to set options that affect
-// the entire FoundationDB client.
+// NetworkOptions is a handle with which to set options that affect the entire
+// FoundationDB client. A NetworkOptions instance should be obtained with the
+// Options method.
 type NetworkOptions struct {
 }
 
-// Options returns a NetworkOptions instance to use while setting
-// options that affect the entire FoundationDB client.
+// Options returns a NetworkOptions instance suitable for setting options that
+// affect the entire FoundationDB client.
 func Options() NetworkOptions {
 	return NetworkOptions{}
 }
@@ -90,10 +89,10 @@ func (opt NetworkOptions) setOpt(code int, param []byte) error {
 	}, param)
 }
 
-// APIVersion determines the runtime behavior the fdb package. If the
-// requested version is not supported by both the fdb package and the
-// FoundationDB C library, an error will be returned. APIVersion must
-// be called prior to any other functions in the fdb package.
+// APIVersion determines the runtime behavior the fdb package. If the requested
+// version is not supported by both the fdb package and the FoundationDB C
+// library, an error will be returned. APIVersion must be called prior to any
+// other functions in the fdb package.
 //
 // Currently, the only API version supported is 100.
 func APIVersion(version int) error {
@@ -141,10 +140,9 @@ func startNetwork() error {
 	return nil
 }
 
-// StartNetwork initializes the FoundationDB client networking
-// engine. It is not necessary to call StartNetwork when using the
-// Open or OpenDefault functions to obtain a database
-// handle. StartNetwork must not be called more than once.
+// StartNetwork initializes the FoundationDB client networking engine. It is not
+// necessary to call StartNetwork when using the Open or OpenDefault functions
+// to obtain a database handle. StartNetwork must not be called more than once.
 func StartNetwork() error {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
@@ -156,23 +154,23 @@ func StartNetwork() error {
 	return startNetwork()
 }
 
-// DefaultClusterFile should be passed to Open or CreateCluster to
-// allow the FoundationDB C library to select the platform-appropriate
-// default cluster file on the current machine.
+// DefaultClusterFile should be passed to Open or CreateCluster to allow the
+// FoundationDB C library to select the platform-appropriate default cluster
+// file on the current machine.
 const DefaultClusterFile string = ""
 
-// OpenDefault returns a database handle to the default database from
-// the FoundationDB cluster identified by the DefaultClusterFile on
-// the current machine. The FoundationDB client networking engine will
-// be initialized first, if necessary.
+// OpenDefault returns a database handle to the default database from the
+// FoundationDB cluster identified by the DefaultClusterFile on the current
+// machine. The FoundationDB client networking engine will be initialized first,
+// if necessary.
 func OpenDefault() (Database, error) {
 	return Open(DefaultClusterFile, "DB")
 }
 
-// Open returns a database handle to the named database from the
-// FoundationDB cluster identified by the provided cluster file and
-// database name. The FoundationDB client networking engine will be
-// initialized first, if necessary.
+// Open returns a database handle to the named database from the FoundationDB
+// cluster identified by the provided cluster file and database name. The
+// FoundationDB client networking engine will be initialized first, if
+// necessary.
 //
 // In the current release, the database name must be "DB".
 func Open(clusterFile string, dbName string) (Database, error) {
@@ -237,8 +235,8 @@ func createCluster(clusterFile string) (Cluster, error) {
 	return Cluster{c}, nil
 }
 
-// CreateCluster returns a cluster handle to the FoundationDB cluster
-// identified by the provided cluster file.
+// CreateCluster returns a cluster handle to the FoundationDB cluster identified
+// by the provided cluster file.
 func CreateCluster(clusterFile string) (Cluster, error) {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()

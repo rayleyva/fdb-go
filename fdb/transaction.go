@@ -31,6 +31,9 @@ import (
 	"runtime"
 )
 
+// A ReadTransaction represents an object that can asynchronously read from a
+// FoundationDB database. Transaction and Snapshot both satisfy the
+// ReadTransaction interface.
 type ReadTransaction interface {
 	Get(key []byte) FutureValue
 	GetKey(sel KeySelector) FutureKey
@@ -39,6 +42,25 @@ type ReadTransaction interface {
 	GetReadVersion() FutureVersion
 }
 
+// Transaction is a handle to a FoundationDB transaction. Transaction is a
+// lightweight object that may be efficiently copied, and is safe for concurrent
+// use by multiple goroutines.
+//
+// In FoundationDB, a transaction is a mutable snapshot of a database. All read
+// and write operations on a transaction see and modify an otherwise-unchanging
+// version of the database and only change the underlying database if and when
+// the transaction is committed. Read operations do see the effects of previous
+// write operations on the same transaction. Committing a transaction usually
+// succeeds in the absence of conflicts.
+//
+// Transactions group operations into a unit with the properties of atomicity,
+// isolation, and durability. Transactions also provide the ability to maintain
+// an application’s invariants or integrity constraints, supporting the property
+// of consistency. Together these properties are known as ACID.
+//
+// Transactions are also causally consistent: once a transaction has been
+// successfully committed, all subsequently created transactions will see the
+// modifications made by it.
 type Transaction struct {
 	*transaction
 }
@@ -47,6 +69,9 @@ type transaction struct {
 	ptr *C.FDBTransaction
 }
 
+// TransactionOptions is a handle with which to set options that affect a
+// Transaction object. A TransactionOptions instance should be obtained with the
+// (Transaction).Options method.
 type TransactionOptions struct {
 	transaction *transaction
 }
@@ -61,18 +86,50 @@ func (t *transaction) destroy() {
 	C.fdb_transaction_destroy(t.ptr)
 }
 
+// Transact passes the Transaction receiver object to the caller-provided
+// function, but does not handle errors or commit the transaction.
+//
+// Transact makes Transaction satisfy the Transactor interface, allowing
+// transactional functions to be used compositionally.
 func (t Transaction) Transact(f func (tr Transaction) (interface{}, error)) (interface{}, error) {
 	return f(t)
 }
 
+// Cancel cancels a transaction. All pending or future uses of the transaction
+// will encounter an error. The Transaction object may be reused after calling
+// (Transaction).Reset.
+//
+// Be careful if you are using (Transaction).Reset and (Transaction).Cancel
+// concurrently with the same transaction. Since they negate each other’s
+// effects, a race condition between these calls will leave the transaction in
+// an unknown state.
+//
+// If your program attempts to cancel a transaction after (Transaction).Commit
+// has been called but before it returns, unpredictable behavior will
+// result. While it is guaranteed that the transaction will eventually end up in
+// a cancelled state, the commit may or may not occur. Moreover, even if the
+// call to (Transaction).Commit appears to return a transaction_cancelled error,
+// the commit may have occurred or may occur in the future. This can make it
+// more difficult to reason about the order in which transactions occur.
 func (t Transaction) Cancel() {
 	C.fdb_transaction_cancel(t.ptr)
 }
 
+// (Infrequently used) SetReadVersion sets the database version that the
+// transaction will read from the database. The database cannot guarantee causal
+// consistency if this method is used (the transaction’s reads will be causally
+// consistent only if the provided read version has that property).
 func (t Transaction) SetReadVersion(version int64) {
 	C.fdb_transaction_set_read_version(t.ptr, C.int64_t(version))
 }
 
+// Snapshot returns a Snapshot object, suitable for performing snapshot
+// reads. Snapshot reads offer a more relaxed isolation level than
+// FoundationDB's default serializable isolation, reducing transaction conflicts
+// but making it harder to reason about concurrency.
+//
+// For more information on snapshot reads, see
+// https://foundationdb.com/documentation/developer-guide.html#using-snapshot-reads.
 func (t Transaction) Snapshot() Snapshot {
 	return Snapshot{t.transaction}
 }
@@ -83,6 +140,13 @@ func makeFutureNil(fp *C.FDBFuture) FutureNil {
 	return FutureNil{f}
 }
 
+// OnError determines whether an fdb.Error instance represents a retryable or
+// fatal error. Waiting on the returned future will return the same error when
+// fatal, or return nil (after blocking the calling goroutine for a suitable
+// delay) for retryable errors.
+//
+// Typical code will not use OnError directly. (Database).Transact uses OnError
+// internally to implement a retry loop.
 func (t Transaction) OnError(e Error) FutureNil {
 	return makeFutureNil(C.fdb_transaction_on_error(t.ptr, C.fdb_error_t(e)))
 }

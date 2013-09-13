@@ -30,6 +30,7 @@ import (
 	"os"
 	"unicode"
 	"unicode/utf8"
+	"go/doc"
 )
 
 type Option struct {
@@ -79,9 +80,9 @@ func writeOpt(receiver string, opt Option) {
 
 	if opt.Description != "" {
 		fmt.Printf("// %s\n", opt.Description)
-		if opt.ParamDesc != "" {
-			fmt.Printf("// Parameter: %s\n", opt.ParamDesc)
-		}
+		// if opt.ParamDesc != "" {
+		// 	fmt.Printf("// Parameter: %s\n", opt.ParamDesc)
+		// }
 	}
 
 	switch opt.ParamType {
@@ -132,8 +133,10 @@ func (d Database) %s(key []byte, param []byte) error {
 }
 
 func writeEnum(scope Scope, opt Option, delta int) {
+	fmt.Println()
 	if opt.Description != "" {
-		fmt.Printf("	// %s\n", opt.Description)
+		doc.ToText(os.Stdout, opt.Description, "    // ", "", 73)
+		// fmt.Printf("	// %s\n", opt.Description)
 	}
 	fmt.Printf("	%s %s = %d\n", scope.Name + translateName(opt.Name), scope.Name, opt.Code + delta)
 }
