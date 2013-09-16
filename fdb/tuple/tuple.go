@@ -1,4 +1,4 @@
-// FoundationDB Go API
+// FoundationDB Go Tuple Layer
 // Copyright (c) 2013 FoundationDB, LLC
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
