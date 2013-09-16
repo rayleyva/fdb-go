@@ -37,7 +37,7 @@ import (
 //
 // Although Database provides convenience methods for reading and writing data,
 // modifications to a database are usually made via transactions, which are
-// usually created and committed automatically by the (Database).Transact
+// usually created and committed automatically by the (Database).Transact()
 // method.
 type Database struct {
 	*database
@@ -49,7 +49,7 @@ type database struct {
 
 // DatabaseOptions is a handle with which to set options that affect a Database
 // object. A DatabaseOptions instance should be obtained with the
-// (Database).Options method.
+// (Database).Options() method.
 type DatabaseOptions struct {
 	d *database
 }
@@ -65,8 +65,9 @@ func (d *database) destroy() {
 }
 
 // CreateTransaction returns a new FoundationDB transaction. It is generally
-// preferable to use the (Database).Transact method, which handles automatically
-// creating and committing a transaction with appropriate retry behavior.
+// preferable to use the (Database).Transact() method, which handles
+// automatically creating and committing a transaction with appropriate retry
+// behavior.
 func (d Database) CreateTransaction() (Transaction, error) {
 	var outt *C.FDBTransaction
 
@@ -87,8 +88,8 @@ func (d Database) CreateTransaction() (Transaction, error) {
 // to be retried or, if fatal, return the error to the caller.
 //
 // When working with fdb Future objects in a transactional fucntion, you may
-// either explicity check and return error values from (Future).GetWithError, or
-// call (Future).GetOrPanic. Transact will recover a panicked fdb.Error and
+// either explicity check and return error values from (Future).GetWithError(),
+// or call (Future).GetOrPanic(). Transact will recover a panicked fdb.Error and
 // either retry the transaction or return the error.
 func (d Database) Transact(f func(tr Transaction) (interface{}, error)) (ret interface{}, e error) {
 	tr, e := d.CreateTransaction()

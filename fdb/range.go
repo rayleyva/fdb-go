@@ -33,13 +33,12 @@ type KeyValue struct {
 }
 
 // RangeOptions specify how a database range read operation is carried
-// out. RangeOptions objects are passed to GetRange and GetRangeSelector
-// methods.
+// out. RangeOptions objects are passed to GetRange() and GetRangeSelector()
+// methods of Database, Transaction and Snapshot.
 //
 // The zero value of RangeOptions represents the default range read
 // configuration (no limit, lexicographic order, to be used as an iterator).
 type RangeOptions struct {
-
 	// Limit restricts the number of key-value pairs returned as part of a range
 	// read. A value of 0 indicates no limit.
 	Limit int
@@ -120,7 +119,7 @@ func (rr RangeResult) Iterator() *RangeIterator {
 
 // RangeIterator returns the key-value pairs in the database (as KeyValue
 // objects) satisfying the range specified in a range read. RangeIterator is
-// constructed with the (RangeResult).Iterator method.
+// constructed with the (RangeResult).Iterator() method.
 //
 // RangeIterator should not be copied or used concurrently from multiple
 // goroutines.

@@ -23,11 +23,15 @@ func int64ToBytes(i int64) ([]byte, error) {
 }
 
 // Enables trace output to a file in a directory of the clients choosing
+//
+// Parameter: path to output directory (or NULL for current working directory)
 func (o NetworkOptions) SetTraceEnable(param string) error {
 	return o.setOpt(30, []byte(param))
 }
 
 // Set the size of the client location cache. Raising this value can boost performance in very large databases where clients access data in a near-random pattern. Defaults to 100000.
+//
+// Parameter: Max location cache entries
 func (o DatabaseOptions) SetLocationCacheSize(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
@@ -37,6 +41,8 @@ func (o DatabaseOptions) SetLocationCacheSize(param int64) error {
 }
 
 // Set the maximum number of watches allowed to be outstanding on a database connection. Increasing this number could result in increased resource usage. Reducing this number will not cancel any outstanding watches. Defaults to 10000 and cannot be larger than 1000000.
+//
+// Parameter: Max outstanding watches
 func (o DatabaseOptions) SetMaxWatches(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
@@ -46,11 +52,15 @@ func (o DatabaseOptions) SetMaxWatches(param int64) error {
 }
 
 // Specify the machine ID that was passed to fdbserver processes running on the same machine as this client, for better location-aware load balancing.
+//
+// Parameter: Hexadecimal ID
 func (o DatabaseOptions) SetMachineId(param string) error {
 	return o.setOpt(21, []byte(param))
 }
 
 // Specify the datacenter ID that was passed to fdbserver processes running in the same datacenter as this client, for better location-aware load balancing.
+//
+// Parameter: Hexadecimal ID
 func (o DatabaseOptions) SetDatacenterId(param string) error {
 	return o.setOpt(22, []byte(param))
 }
@@ -125,6 +135,8 @@ func (o TransactionOptions) SetDebugDump() error {
 }
 
 // Set a timeout in milliseconds which, when elapsed, will cause the transaction automatically to be cancelled. Valid parameter values are ``[0, INT_MAX]``. If set to 0, will disable all timeouts. All pending and any future uses of the transaction will throw an exception. The transaction can be used again after it is reset.
+//
+// Parameter: value in milliseconds of timeout
 func (o TransactionOptions) SetTimeout(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {
@@ -134,6 +146,8 @@ func (o TransactionOptions) SetTimeout(param int64) error {
 }
 
 // Set a maximum number of retries after which additional calls to onError will throw the most recently seen error code. Valid parameter values are ``[-1, INT_MAX]``. If set to -1, will disable the retry limit.
+//
+// Parameter: number of times to retry
 func (o TransactionOptions) SetRetryLimit(param int64) error {
 	b, e := int64ToBytes(param)
 	if e != nil {

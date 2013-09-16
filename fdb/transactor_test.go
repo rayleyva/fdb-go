@@ -29,7 +29,8 @@ import (
 func setOne(t fdb.Transactor, key []byte, value []byte) {
 	fmt.Printf("setOne got:  %T\n", t)
 	t.Transact(func(tr fdb.Transaction) (interface{}, error) {
-		tr.Set(key, value)
+		// We don't actually call tr.Set here to avoid mutating a real database.
+		// tr.Set(key, value)
 		return nil, nil
 	})
 }

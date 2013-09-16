@@ -66,7 +66,7 @@ func setOpt(setter func(*C.uint8_t, C.int) C.fdb_error_t, param []byte) error {
 
 // NetworkOptions is a handle with which to set options that affect the entire
 // FoundationDB client. A NetworkOptions instance should be obtained with the
-// Options method.
+// fdb.Options() method.
 type NetworkOptions struct {
 }
 
@@ -141,8 +141,9 @@ func startNetwork() error {
 }
 
 // StartNetwork initializes the FoundationDB client networking engine. It is not
-// necessary to call StartNetwork when using the Open or OpenDefault functions
-// to obtain a database handle. StartNetwork must not be called more than once.
+// necessary to call StartNetwork when using the fdb.Open() or fdb.OpenDefault()
+// functions to obtain a database handle. StartNetwork must not be called more
+// than once.
 func StartNetwork() error {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
@@ -154,9 +155,9 @@ func StartNetwork() error {
 	return startNetwork()
 }
 
-// DefaultClusterFile should be passed to Open or CreateCluster to allow the
-// FoundationDB C library to select the platform-appropriate default cluster
-// file on the current machine.
+// DefaultClusterFile should be passed to fdb.Open() or fdb.CreateCluster() to
+// allow the FoundationDB C library to select the platform-appropriate default
+// cluster file on the current machine.
 const DefaultClusterFile string = ""
 
 // OpenDefault returns a database handle to the default database from the

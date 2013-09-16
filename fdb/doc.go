@@ -21,5 +21,14 @@
 
 /*
 Package fdb provides an interface to FoundationDB 1.0 databases.
+
+Among other things this needs to explain about errors and link to https://foundationdb.com/documentation/api-error-codes.html#developer-guide-error-codes.
+
+Conceptual topics that are not covered in individual API functions and types (or
+that would benefit from being reiterated) should be discussed here, linked to,
+or both.
+
+Although some examples exist attached to various symbols, we should also add an
+example code block to this preamble demonstrating basic use of the package.
 */
 package fdb

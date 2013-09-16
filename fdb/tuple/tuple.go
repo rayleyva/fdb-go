@@ -19,6 +19,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+// Package tuple provides a layer for encoding and decoding multi-element tuples
+// into keys usable by FoundationDB. The encoded key maintains the same sort
+// order as the original tuple: sorted first by the first element, then by the
+// second element, etc. This makes the tuple layer ideal for building a variety
+// of higher-level data models.
+//
+// FoundationDB tuple's can currently encode byte and unicode strings, integers
+// and NULL values. In Go these are represented as []byte, string, int64 and
+// nil.
 package tuple
 
 import (
@@ -27,6 +36,13 @@ import (
 	"bytes"
 )
 
+// Tuple is a slice of objects that can be encoded as FoundationDB tuples. If a
+// tuple contains elements of types other than []byte, string, int64 or nil, an
+// error will be returned when the Tuple is packed.
+//
+// Given a Tuple T containing objects only of these types, then T will be
+// identical to the Tuple returned by unpacking the byte slice obtained by
+// packing T.
 type Tuple []interface{}
 
 var sizeLimits = []uint64{
@@ -84,6 +100,8 @@ func encodeInt(buf *bytes.Buffer, i int64) {
 	buf.Write(ibuf.Bytes()[8-n:])
 }
 
+// Pack returns a byte slice encoding the provided tuple, or an error if the
+// tuple contains any invalid elements.
 func Pack(t Tuple) ([]byte, error) {
 	buf := new(bytes.Buffer)
 
@@ -159,6 +177,8 @@ func decodeInt(b []byte) (int64, int) {
 	return ret, n+1
 }
 
+// Unpack returns the tuple encoded by the provided byte slice, or an error if
+// the byte slice did not correctly encode a FoundationDB tuple.
 func Unpack(b []byte) (Tuple, error) {
 	var t Tuple
 
@@ -189,6 +209,9 @@ func Unpack(b []byte) (Tuple, error) {
 	return t, nil
 }
 
+// Range returns the begin and end key that describe the range of keys that
+// encode tuples that strictly begin with t (that is, all tuples of greater
+// length than t of which t is a prefix).
 func Range(t Tuple) ([]byte, []byte, error) {
 	p, e := Pack(t)
 	if e != nil {

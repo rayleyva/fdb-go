@@ -32,7 +32,7 @@ func ExamplePrefixRange() {
 	tr, _ := db.CreateTransaction()
 
 	// Clear and initialize data in this transaction. In examples we do not
-	// commit transactions to avoid accidentally breaking real world systems.
+	// commit transactions to avoid mutating a real database.
 	tr.ClearRange(nil, []byte{0xFF})
 	tr.Set([]byte("alpha"), []byte("1"))
 	tr.Set([]byte("alphabetA"), []byte("2"))
@@ -60,7 +60,7 @@ func ExampleRangeIterator() {
 	tr, _ := db.CreateTransaction()
 
 	// Clear and initialize data in this transaction. In examples we do not
-	// commit transactions to avoid accidentally breaking real world systems.
+	// commit transactions to avoid mutating a real database.
 	tr.ClearRange(nil, []byte{0xFF})
 	tr.Set([]byte("apple"), []byte("foo"))
 	tr.Set([]byte("cherry"), []byte("baz"))

@@ -71,7 +71,7 @@ type transaction struct {
 
 // TransactionOptions is a handle with which to set options that affect a
 // Transaction object. A TransactionOptions instance should be obtained with the
-// (Transaction).Options method.
+// (Transaction).Options() method.
 type TransactionOptions struct {
 	transaction *transaction
 }
@@ -97,28 +97,28 @@ func (t Transaction) Transact(f func (tr Transaction) (interface{}, error)) (int
 
 // Cancel cancels a transaction. All pending or future uses of the transaction
 // will encounter an error. The Transaction object may be reused after calling
-// (Transaction).Reset.
+// (Transaction).Reset().
 //
-// Be careful if you are using (Transaction).Reset and (Transaction).Cancel
+// Be careful if you are using (Transaction).Reset() and (Transaction).Cancel()
 // concurrently with the same transaction. Since they negate each other’s
 // effects, a race condition between these calls will leave the transaction in
 // an unknown state.
 //
-// If your program attempts to cancel a transaction after (Transaction).Commit
+// If your program attempts to cancel a transaction after (Transaction).Commit()
 // has been called but before it returns, unpredictable behavior will
 // result. While it is guaranteed that the transaction will eventually end up in
 // a cancelled state, the commit may or may not occur. Moreover, even if the
-// call to (Transaction).Commit appears to return a transaction_cancelled error,
-// the commit may have occurred or may occur in the future. This can make it
-// more difficult to reason about the order in which transactions occur.
+// call to (Transaction).Commit() appears to return a transaction_cancelled
+// error, the commit may have occurred or may occur in the future. This can make
+// it more difficult to reason about the order in which transactions occur.
 func (t Transaction) Cancel() {
 	C.fdb_transaction_cancel(t.ptr)
 }
 
-// (Infrequently used) SetReadVersion sets the database version that the
-// transaction will read from the database. The database cannot guarantee causal
-// consistency if this method is used (the transaction’s reads will be causally
-// consistent only if the provided read version has that property).
+// (Infrequently used) SetReadVersion sets the database version that the transaction will read from
+// the database. The database cannot guarantee causal consistency if this method
+// is used (the transaction’s reads will be causally consistent only if the
+// provided read version has that property).
 func (t Transaction) SetReadVersion(version int64) {
 	C.fdb_transaction_set_read_version(t.ptr, C.int64_t(version))
 }
@@ -140,21 +140,54 @@ func makeFutureNil(fp *C.FDBFuture) FutureNil {
 	return FutureNil{f}
 }
 
-// OnError determines whether an fdb.Error instance represents a retryable or
-// fatal error. Waiting on the returned future will return the same error when
+// OnError determines whether an error returned by a Transaction method is
+// retryable. Waiting on the returned future will return the same error when
 // fatal, or return nil (after blocking the calling goroutine for a suitable
 // delay) for retryable errors.
 //
-// Typical code will not use OnError directly. (Database).Transact uses OnError
-// internally to implement a retry loop.
+// Typical code will not use OnError directly. (Database).Transact() uses
+// OnError internally to implement a correct retry loop.
 func (t Transaction) OnError(e Error) FutureNil {
 	return makeFutureNil(C.fdb_transaction_on_error(t.ptr, C.fdb_error_t(e)))
 }
 
+// Commit attempts to commit the modifications made in the transaction to the
+// database. Waiting on the returned future will block the calling goroutine
+// until the transaction has either been committed successfully or an error is
+// encountered. Any error should be passed to (Transaction).OnError() to determine
+// if the error is retryable or not.
+//
+// As with other client/server databases, in some failure scenarios a client may
+// be unable to determine whether a transaction succeeded. For more information,
+// see
+// https://foundationdb.com/documentation/developer-guide.html#developer-guide-unknown-results.
 func (t Transaction) Commit() FutureNil {
 	return makeFutureNil(C.fdb_transaction_commit(t.ptr))
 }
 
+// Watch creates a watch and returns a FutureNil that will become ready when the
+// watch reports a change to the value of the specified key.
+//
+// A watch’s behavior is relative to the transaction that created it. A watch
+// will report a change in relation to the key’s value as readable by that
+// transaction. The initial value used for comparison is either that of the
+// transaction’s read version or the value as modified by the transaction itself
+// prior to the creation of the watch. If the value changes and then changes
+// back to its initial value, the watch might not report the change.
+//
+// Until the transaction that created it has been committed, a watch will not
+// report changes made by other transactions. In contrast, a watch will
+// immediately report changes made by the transaction itself. Watches cannot be
+// created if the transaction has set
+// (Transaction).Options().SetReadYourWritesDisable(), and an attempt to do so
+// will return a watches_disabled error.
+//
+// By default, each database connection can have no more than 10,000 watches
+// that have not yet reported a change. When this number is exceeded, an attempt
+// to create a watch will return a too_many_watches error. This limit can be
+// changed using (Database).Options().SetMaxWatches(). Because a watch outlives
+// the transaction that creates it, any watch that is no longer needed should be
+// cancelled by calling (FutureNil).Cancel() on its returned future.
 func (t Transaction) Watch(key []byte) FutureNil {
 	return makeFutureNil(C.fdb_transaction_watch(t.ptr, byteSliceToPtr(key), C.int(len(key))))
 }
@@ -165,6 +198,9 @@ func (t *transaction) get(key []byte, snapshot int) FutureValue {
 	return FutureValue{&futureValue{future: f}}
 }
 
+// Get returns the (future) value associated with the specified key. The read is
+// performed asynchronously and does not block the calling goroutine. The future
+// will become ready when the read is complete.
 func (t Transaction) Get(key []byte) FutureValue {
 	return t.get(key, 0)
 }
@@ -187,10 +223,19 @@ func (t *transaction) getRangeSelector(begin KeySelector, end KeySelector, optio
 	}
 }
 
-func (t Transaction) GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) RangeResult {
-	return t.getRangeSelector(begin, end, options, false)
+// GetRangeSelector performs a range read. The returned RangeResult represents
+// all KeyValue objects kv where begin <= kv.Key < end, ordered by kv.Key. Begin
+// and end are the keys referenced by the key selectors beginSel and endSel. All
+// reads performed as a result of GetRangeSelector are asynchronous and do not
+// block the calling goroutine.
+func (t Transaction) GetRangeSelector(beginSel KeySelector, endSel KeySelector, options RangeOptions) RangeResult {
+	return t.getRangeSelector(beginSel, endSel, options, false)
 }
 
+// GetRange performs a range read. The returned RangeResult represents all
+// KeyValue objects kv where begin <= kv.Key < end, ordered by kv.Key. All reads
+// performed as a result of GetRangeSelector are asynchronous and do not block
+// the calling goroutine.
 func (t Transaction) GetRange(begin []byte, end []byte, options RangeOptions) RangeResult {
 	return t.getRangeSelector(FirstGreaterOrEqual(begin), FirstGreaterOrEqual(end), options, false)
 }
@@ -201,22 +246,41 @@ func (t *transaction) getReadVersion() FutureVersion {
 	return FutureVersion{f}
 }
 
+// (Infrequently used) GetReadVersion returns the (future) transaction read version. The read is
+// performed asynchronously and does not block the calling goroutine. The future
+// will become ready when the read version is available.
 func (t Transaction) GetReadVersion() FutureVersion {
 	return t.getReadVersion()
 }
 
+// Set associated the given key and value, overwriting any previous association
+// with key. Set returns immediately, having modified the snapshot of the
+// database represented by the transaction.
 func (t Transaction) Set(key []byte, value []byte) {
 	C.fdb_transaction_set(t.ptr, byteSliceToPtr(key), C.int(len(key)), byteSliceToPtr(value), C.int(len(value)))
 }
 
+// Clear removes the specified key (and any associated value), if it
+// exists. Clear returns immediately, having modified the snapshot of the
+// database represented by the transaction.
 func (t Transaction) Clear(key []byte) {
 	C.fdb_transaction_clear(t.ptr, byteSliceToPtr(key), C.int(len(key)))
 }
 
+// ClearRange removes all keys k such that begin <= k < end, and their
+// associated values. ClearRange returns immediately, having modified the
+// snapshot of the database represented by the transaction.
 func (t Transaction) ClearRange(begin []byte, end []byte) {
 	C.fdb_transaction_clear_range(t.ptr, byteSliceToPtr(begin), C.int(len(begin)), byteSliceToPtr(end), C.int(len(end)))
 }
 
+// (Infrequently used) GetCommittedVersion returns the version number at which a successful commit
+// modified the database. This must be called only after the successful
+// (non-error) completion of a call to (Transaction).Commit() on this
+// Transaction, or the behavior is undefined. Read-only transactions do not
+// modify the database when committed and will have a committed version of
+// -1. Keep in mind that a transaction which reads keys and then sets them to
+// their current values may be optimized to a read-only transaction.
 func (t Transaction) GetCommittedVersion() (int64, error) {
 	var version C.int64_t
 
@@ -227,6 +291,9 @@ func (t Transaction) GetCommittedVersion() (int64, error) {
 	return int64(version), nil
 }
 
+// Reset rolls back a transaction, completely resetting it to its initial
+// state. This is logically equivalent to destroying the transaction and
+// creating a new one.
 func (t Transaction) Reset() {
 	C.fdb_transaction_reset(t.ptr)
 }
@@ -245,6 +312,9 @@ func (t *transaction) getKey(sel KeySelector, snapshot int) FutureKey {
 	return FutureKey{&futureKey{future: f}}
 }
 
+// GetKey returns the future key referenced by the provided key selector. The
+// read is performed asynchronously and does not block the calling
+// goroutine. The future will become ready when the read version is available.
 func (t Transaction) GetKey(sel KeySelector) FutureKey {
 	return t.getKey(sel, 0)
 }
@@ -261,46 +331,74 @@ func addConflictRange(t *transaction, begin []byte, end []byte, crtype conflictR
 	return nil
 }
 
+// AddReadConflictRange adds a range of keys to the transaction’s read conflict
+// ranges as if you had read the range. As a result, other transactions that
+// write a key in this range could cause the transaction to fail with a
+// conflict.
 func (t Transaction) AddReadConflictRange(begin []byte, end []byte) error {
 	return addConflictRange(t.transaction, begin, end, conflictRangeTypeRead)
 }
 
+// AddReadConflictKey adds a key to the transaction’s read conflict ranges as if
+// you had read the key. As a result, other transactions that concurrently write
+// this key could cause the transaction to fail with a conflict.
 func (t Transaction) AddReadConflictKey(key []byte) error {
 	return addConflictRange(t.transaction, key, append(key, 0x00), conflictRangeTypeRead)
 }
 
+// AddWriteConflictRange adds a range of keys to the transaction’s write
+// conflict ranges as if you had cleared the range. As a result, other
+// transactions that concurrently read a key in this range could fail with a
+// conflict.
 func (t Transaction) AddWriteConflictRange(begin []byte, end []byte) error {
 	return addConflictRange(t.transaction, begin, end, conflictRangeTypeWrite)
 }
 
+// AddWriteConflictKey adds a key to the transaction’s write conflict ranges as
+// if you had written the key. As a result, other transactions that concurrently
+// read this key could fail with a conflict.
 func (t Transaction) AddWriteConflictKey(key []byte) error {
 	return addConflictRange(t.transaction, key, append(key, 0x00), conflictRangeTypeWrite)
 }
 
+// Options returns a TransactionOptions instance suitable for setting options
+// specific to this transaction.
 func (t Transaction) Options() TransactionOptions {
 	return TransactionOptions{t.transaction}
 }
 
+// Snapshot is a handle to a FoundationDB transaction snapshot, suitable for
+// performing snapshot reads. Snapshot reads offer a more relaxed isolation
+// level than FoundationDB's default serializable isolation, reducing
+// transaction conflicts but making it harder to reason about concurrency.
+//
+// For more information on snapshot reads, see
+// https://foundationdb.com/documentation/developer-guide.html#using-snapshot-reads.
 type Snapshot struct {
 	*transaction
 }
 
+// Like (Transaction).Get(), but as a snapshot read.
 func (s Snapshot) Get(key []byte) FutureValue {
 	return s.get(key, 1)
 }
 
+// Like (Transaction).GetKey(), but as a snapshot read.
 func (s Snapshot) GetKey(sel KeySelector) FutureKey {
 	return s.getKey(sel, 1)
 }
 
+// Like (Transaction).GetRangeSelector(), but as a snapshot read.
 func (s Snapshot) GetRangeSelector(begin KeySelector, end KeySelector, options RangeOptions) RangeResult {
 	return s.getRangeSelector(begin, end, options, true)
 }
 
+// Like (Transaction).GetRange(), but as a snapshot read.
 func (s Snapshot) GetRange(begin []byte, end []byte, options RangeOptions) RangeResult {
 	return s.getRangeSelector(FirstGreaterOrEqual(begin), FirstGreaterOrEqual(end), options, true)
 }
 
+// Like (Transaction).GetReadVersion(), but as a snapshot read.
 func (s Snapshot) GetReadVersion() FutureVersion {
 	return s.getReadVersion()
 }

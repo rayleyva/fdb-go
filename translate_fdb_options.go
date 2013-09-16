@@ -80,9 +80,9 @@ func writeOpt(receiver string, opt Option) {
 
 	if opt.Description != "" {
 		fmt.Printf("// %s\n", opt.Description)
-		// if opt.ParamDesc != "" {
-		// 	fmt.Printf("// Parameter: %s\n", opt.ParamDesc)
-		// }
+		if opt.ParamDesc != "" {
+			fmt.Printf("//\n// Parameter: %s\n", opt.ParamDesc)
+		}
 	}
 
 	switch opt.ParamType {
