@@ -26,8 +26,8 @@
 // of higher-level data models.
 //
 // FoundationDB tuple's can currently encode byte and unicode strings, integers
-// and NULL values. In Go these are represented as []byte, string, int64 and
-// nil.
+// and NULL values. In Go these are represented as []byte, string, int64 (or
+// int) and nil.
 package tuple
 
 import (
@@ -57,15 +57,9 @@ var sizeLimits = []uint64{
 	1 << (8 * 8) - 1,
 }
 
-func encodeBytes(buf *bytes.Buffer, b []byte) {
-	buf.WriteByte(0x01)
+func encodeBytes(buf *bytes.Buffer, code byte, b []byte) {
+	buf.WriteByte(code)
 	buf.Write(bytes.Replace(b, []byte{0x00}, []byte{0x00, 0xff}, -1))
-	buf.WriteByte(0x00)
-}
-
-func encodeString(buf *bytes.Buffer, s string) {
-	buf.WriteByte(0x02)
-	buf.Write(bytes.Replace([]byte(s), []byte{0x00}, []byte{0x00, 0xff}, -1))
 	buf.WriteByte(0x00)
 }
 
@@ -111,10 +105,12 @@ func Pack(t Tuple) ([]byte, error) {
 			buf.WriteByte(0x00)
 		case int64:
 			encodeInt(buf, e)
-		case string:
-			encodeString(buf, e)
+		case int:
+			encodeInt(buf, int64(e))
 		case []byte:
-			encodeBytes(buf, e)
+			encodeBytes(buf, 0x01, e)
+		case string:
+			encodeBytes(buf, 0x02, []byte(e))
 		default:
 			return []byte{}, fmt.Errorf("Unencodable type at index %d (%v, %T)", i, e, e)
 		}
