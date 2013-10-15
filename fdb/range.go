@@ -27,6 +27,10 @@ package fdb
 */
 import "C"
 
+import (
+	"fmt"
+)
+
 // KeyValue represents a single key-value pair in the database.
 type KeyValue struct {
 	Key, Value []byte
@@ -226,7 +230,7 @@ func strinc(prefix []byte) ([]byte, error) {
 		}
 	}
 
-	return nil, errorKeyOutsideLegalRange
+	return nil, fmt.Errorf("Key must contain at least one byte not equal to 0xFF")
 }
 
 // PrefixRange returns the begin and end key that describe the range of keys

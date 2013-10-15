@@ -23,7 +23,6 @@ package fdb
 
 // SOMEDAY: these (along with others) should be coming from fdb.options?
 const (
-	errorKeyOutsideLegalRange = Error(2004)
 	errorNetworkNotSetup = Error(2008)
 
 	errorApiVersionUnset = Error(2200)
