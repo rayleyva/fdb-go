@@ -142,7 +142,7 @@ func (d Database) Transact(f func(tr Transaction) (interface{}, error)) (ret int
 
 // Get returns the value associated with the specified key (or nil if the key
 // does not exist). This read blocks the current goroutine until complete.
-func (d Database) Get(key []byte) ([]byte, error) {
+func (d Database) Get(key KeyConvertible) ([]byte, error) {
 	v, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		return tr.Get(key).GetOrPanic(), nil
 	})
@@ -154,35 +154,23 @@ func (d Database) Get(key []byte) ([]byte, error) {
 
 // GetKey returns the key referenced by the specified key selector. This read
 // blocks the current goroutine until complete.
-func (d Database) GetKey(sel KeySelector) ([]byte, error) {
+func (d Database) GetKey(sel Selectable) (Key, error) {
 	v, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		return tr.GetKey(sel).GetOrPanic(), nil
 	})
 	if e != nil {
 		return nil, e
 	}
-	return v.([]byte), nil
+	return v.(Key), nil
 }
 
-// GetRange returns a slice of KeyValue objects kv where begin <= kv.Key < end,
-// ordered by kv.Key. This read blocks the current goroutine until complete.
-func (d Database) GetRange(begin []byte, end []byte, options RangeOptions) ([]KeyValue, error) {
+// GetRange returns a slice of KeyValue objects kv where beginKey <= kv.Key <
+// endKey, ordered by kv.Key. beginKey and endKey are the keys referenced by the
+// selectors begin and end. This read blocks the current goroutine until
+// complete.
+func (d Database) GetRange(begin Selectable, end Selectable, options RangeOptions) ([]KeyValue, error) {
 	v, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		return tr.GetRange(begin, end, options).GetSliceOrPanic(), nil
-	})
-	if e != nil {
-		return nil, e
-	}
-	return v.([]KeyValue), nil
-}
-
-// GetRangeSelector returns a slice of KeyValue objects kv where begin <= kv.Key
-// < end, ordered by kv.Key. Begin and end are the keys referenced by the key
-// selectors beginSel and endSel. This read blocks the current goroutine until
-// complete.
-func (d Database) GetRangeSelector(beginSel KeySelector, endSel KeySelector, options RangeOptions) ([]KeyValue, error) {
-	v, e := d.Transact(func (tr Transaction) (interface{}, error) {
-		return tr.GetRangeSelector(beginSel, endSel, options).GetSliceOrPanic(), nil
 	})
 	if e != nil {
 		return nil, e
@@ -193,7 +181,7 @@ func (d Database) GetRangeSelector(beginSel KeySelector, endSel KeySelector, opt
 // Set associates the specified key and value, overwriting any previous value
 // associated with key. This change will be committed immediately and blocks the
 // current goroutine until complete.
-func (d Database) Set(key []byte, value []byte) error {
+func (d Database) Set(key KeyConvertible, value []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.Set(key, value)
 		return nil, nil
@@ -207,7 +195,7 @@ func (d Database) Set(key []byte, value []byte) error {
 // Clear removes the specified key (and any associated value), if it
 // exists. This change will be committed immediately and blocks the current
 // goroutine until complete.
-func (d Database) Clear(key []byte) error {
+func (d Database) Clear(key KeyConvertible) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.Clear(key)
 		return nil, nil
@@ -221,7 +209,7 @@ func (d Database) Clear(key []byte) error {
 // ClearRange removes all keys k where begin <= k < end, and their associated
 // values. This change will be committed immediately and blocks the current
 // goroutine until complete.
-func (d Database) ClearRange(begin []byte, end []byte) error {
+func (d Database) ClearRange(begin KeyConvertible, end KeyConvertible) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.ClearRange(begin, end)
 		return nil, nil
@@ -236,7 +224,7 @@ func (d Database) ClearRange(begin []byte, end []byte) error {
 // the key does not exist), along with a future that will become ready when the
 // value associated with the key changes. This read blocks the current goroutine
 // until complete.
-func (d Database) GetAndWatch(key []byte) ([]byte, FutureNil, error) {
+func (d Database) GetAndWatch(key KeyConvertible) ([]byte, FutureNil, error) {
 	r, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		v := tr.Get(key).GetOrPanic()
 		w := tr.Watch(key)
@@ -254,7 +242,7 @@ func (d Database) GetAndWatch(key []byte) ([]byte, FutureNil, error) {
 // value associated with key, and returns a future that will become ready when
 // the value associated with the key changes. This change will be committed
 // immediately and blocks the current goroutine until complete.
-func (d Database) SetAndWatch(key []byte, value []byte) (FutureNil, error) {
+func (d Database) SetAndWatch(key KeyConvertible, value []byte) (FutureNil, error) {
 	r, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.Set(key, value)
 		return tr.Watch(key), nil
@@ -269,7 +257,7 @@ func (d Database) SetAndWatch(key []byte, value []byte) (FutureNil, error) {
 // returns a future that will become ready when the value associated with the
 // key changes. This change will be committed immediately and blocks the current
 // goroutine until complete.
-func (d Database) ClearAndWatch(key []byte) (FutureNil, error) {
+func (d Database) ClearAndWatch(key KeyConvertible) (FutureNil, error) {
 	r, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.Clear(key)
 		return tr.Watch(key), nil

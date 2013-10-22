@@ -33,12 +33,13 @@ import (
 
 // KeyValue represents a single key-value pair in the database.
 type KeyValue struct {
-	Key, Value []byte
+	Key Key
+	Value []byte
 }
 
 // RangeOptions specify how a database range read operation is carried
-// out. RangeOptions objects are passed to GetRange() and GetRangeSelector()
-// methods of Database, Transaction and Snapshot.
+// out. RangeOptions objects are passed to GetRange() methods of Database,
+// Transaction and Snapshot.
 //
 // The zero value of RangeOptions represents the default range read
 // configuration (no limit, lexicographic order, to be used as an iterator).
@@ -235,7 +236,7 @@ func strinc(prefix []byte) ([]byte, error) {
 
 // PrefixRange returns the begin and end key that describe the range of keys
 // that begin with the provided prefix.
-func PrefixRange(prefix []byte) ([]byte, []byte, error) {
+func PrefixRange(prefix []byte) (Key, Key, error) {
 	end, e := strinc(prefix)
 	if e != nil {
 		return nil, nil, e

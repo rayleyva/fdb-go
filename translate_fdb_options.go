@@ -114,12 +114,12 @@ func writeMutation(opt Option) {
 	tname := translateName(opt.Name)
 	fmt.Printf(`
 // %s %s
-func (t Transaction) %s(key []byte, param []byte) {
-	t.atomicOp(key, param, %d)
+func (t Transaction) %s(key KeyConvertible, param []byte) {
+	t.atomicOp(key.ToFDBKeyBytes(), param, %d)
 }
 
 // %s %s
-func (d Database) %s(key []byte, param []byte) error {
+func (d Database) %s(key KeyConvertible, param []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.%s(key, param)
 		return nil, nil

@@ -94,7 +94,7 @@ func (opt NetworkOptions) setOpt(code int, param []byte) error {
 // library, an error will be returned. APIVersion must be called prior to any
 // other functions in the fdb package.
 //
-// Currently, the only API version supported is 100.
+// Currently, the only API versions 100 and 101 are supported.
 func APIVersion(version int) error {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
@@ -103,11 +103,11 @@ func APIVersion(version int) error {
 		return errorApiVersionAlreadySet
 	}
 
-	if version != 100 {
+	if version < 100 || version > 101 {
 		return errorApiVersionNotSupported
 	}
 
-	if e := C.fdb_select_api_version_impl(C.int(version), 100); e != 0 {
+	if e := C.fdb_select_api_version_impl(C.int(version), 101); e != 0 {
 		return Error(e)
 	}
 
@@ -165,7 +165,7 @@ const DefaultClusterFile string = ""
 // machine. The FoundationDB client networking engine will be initialized first,
 // if necessary.
 func OpenDefault() (Database, error) {
-	return Open(DefaultClusterFile, "DB")
+	return Open(DefaultClusterFile, []byte("DB"))
 }
 
 // Open returns a database handle to the named database from the FoundationDB
@@ -173,8 +173,8 @@ func OpenDefault() (Database, error) {
 // FoundationDB client networking engine will be initialized first, if
 // necessary.
 //
-// In the current release, the database name must be "DB".
-func Open(clusterFile string, dbName string) (Database, error) {
+// In the current release, the database name must be []byte("DB").
+func Open(clusterFile string, dbName []byte) (Database, error) {
 	networkMutex.Lock()
 	defer networkMutex.Unlock()
 
@@ -200,13 +200,13 @@ func Open(clusterFile string, dbName string) (Database, error) {
 		openClusters[clusterFile] = cluster
 	}
 
-	db, ok := openDatabases[dbName]
+	db, ok := openDatabases[string(dbName)]
 	if !ok {
 		db, e = cluster.OpenDatabase(dbName)
 		if e != nil {
 			return Database{}, e
 		}
-		openDatabases[dbName] = db
+		openDatabases[string(dbName)] = db
 	}
 
 	return db, nil
@@ -259,4 +259,22 @@ func byteSliceToPtr(b []byte) *C.uint8_t {
 	} else {
 		return nil
 	}
+}
+
+// KeyConvertible is the interface implemented by types which may be used as
+// FoundationDB Keys. The fdb.Key type satisfies the KeyConvertible interface.
+type KeyConvertible interface {
+	ToFDBKeyBytes() []byte
+}
+
+// Key represents a FoundationDB key, a lexicographically-ordered sequence of
+// bytes. Key implements the KeyConvertible and Selectable interfaces.
+type Key []byte
+
+func (k Key) ToFDBKeyBytes() []byte {
+	return []byte(k)
+}
+
+func (k Key) ToFDBKeySelector() KeySelector {
+	return FirstGreaterOrEqual(k)
 }

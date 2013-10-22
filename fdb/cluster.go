@@ -54,8 +54,8 @@ func (c *cluster) destroy() {
 // directly.
 //
 // In the current release, the database name must be "DB".
-func (c Cluster) OpenDatabase(dbName string) (Database, error) {
-	f := C.fdb_cluster_create_database(c.ptr, byteSliceToPtr([]byte(dbName)), C.int(len([]byte(dbName))))
+func (c Cluster) OpenDatabase(dbName []byte) (Database, error) {
+	f := C.fdb_cluster_create_database(c.ptr, byteSliceToPtr(dbName), C.int(len(dbName)))
 	fdb_future_block_until_ready(f)
 
 	var outd *C.FDBDatabase

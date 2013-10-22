@@ -178,7 +178,7 @@ type FutureKey struct {
 
 type futureKey struct {
 	*future
-	k []byte
+	k Key
 }
 
 // These are implemented again so that they show up in the generated
@@ -214,7 +214,7 @@ func (f *futureKey) Cancel() {
 // GetWithError returns a database key or an error if the asynchronous operation
 // associated with this future did not successfully complete. The current
 // goroutine will be blocked until the future is ready.
-func (f FutureKey) GetWithError() ([]byte, error) {
+func (f FutureKey) GetWithError() (Key, error) {
 	if f.k != nil {
 		return f.k, nil
 	}
@@ -241,7 +241,7 @@ func (f FutureKey) GetWithError() ([]byte, error) {
 // GetOrPanic returns a database key, or panics if the asynchronous operation
 // associated with this future did not successfully complete. The current
 // goroutine will be blocked until the future is ready.
-func (f FutureKey) GetOrPanic() []byte {
+func (f FutureKey) GetOrPanic() Key {
 	val, err := f.GetWithError()
 	if err != nil {
 		panic(err)

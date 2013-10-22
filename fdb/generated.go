@@ -202,12 +202,12 @@ const (
 )
 
 // Add performs an addition of little-endian integers. If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``. The integers to be added must be stored in a little-endian representation.  They can be signed in two's complement representation or unsigned. You can add to an integer at a known offset in the value by prepending the appropriate number of zero bytes to ``param`` and padding with zero bytes to match the length of the value. However, this offset technique requires that you know the addition will not cause the integer field within the value to overflow.
-func (t Transaction) Add(key []byte, param []byte) {
-	t.atomicOp(key, param, 2)
+func (t Transaction) Add(key KeyConvertible, param []byte) {
+	t.atomicOp(key.ToFDBKeyBytes(), param, 2)
 }
 
 // Add performs an addition of little-endian integers. If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``. The integers to be added must be stored in a little-endian representation.  They can be signed in two's complement representation or unsigned. You can add to an integer at a known offset in the value by prepending the appropriate number of zero bytes to ``param`` and padding with zero bytes to match the length of the value. However, this offset technique requires that you know the addition will not cause the integer field within the value to overflow.
-func (d Database) Add(key []byte, param []byte) error {
+func (d Database) Add(key KeyConvertible, param []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.Add(key, param)
 		return nil, nil
@@ -219,12 +219,12 @@ func (d Database) Add(key []byte, param []byte) error {
 }
 
 // And performs a bitwise ``and`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
-func (t Transaction) And(key []byte, param []byte) {
-	t.atomicOp(key, param, 6)
+func (t Transaction) And(key KeyConvertible, param []byte) {
+	t.atomicOp(key.ToFDBKeyBytes(), param, 6)
 }
 
 // And performs a bitwise ``and`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
-func (d Database) And(key []byte, param []byte) error {
+func (d Database) And(key KeyConvertible, param []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.And(key, param)
 		return nil, nil
@@ -236,12 +236,12 @@ func (d Database) And(key []byte, param []byte) error {
 }
 
 // Or performs a bitwise ``or`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
-func (t Transaction) Or(key []byte, param []byte) {
-	t.atomicOp(key, param, 7)
+func (t Transaction) Or(key KeyConvertible, param []byte) {
+	t.atomicOp(key.ToFDBKeyBytes(), param, 7)
 }
 
 // Or performs a bitwise ``or`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
-func (d Database) Or(key []byte, param []byte) error {
+func (d Database) Or(key KeyConvertible, param []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.Or(key, param)
 		return nil, nil
@@ -253,12 +253,12 @@ func (d Database) Or(key []byte, param []byte) error {
 }
 
 // Xor performs a bitwise ``xor`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
-func (t Transaction) Xor(key []byte, param []byte) {
-	t.atomicOp(key, param, 8)
+func (t Transaction) Xor(key KeyConvertible, param []byte) {
+	t.atomicOp(key.ToFDBKeyBytes(), param, 8)
 }
 
 // Xor performs a bitwise ``xor`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
-func (d Database) Xor(key []byte, param []byte) error {
+func (d Database) Xor(key KeyConvertible, param []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
 		tr.Xor(key, param)
 		return nil, nil

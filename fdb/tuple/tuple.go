@@ -34,6 +34,7 @@ import (
 	"fmt"
 	"encoding/binary"
 	"bytes"
+	"github.com/FoundationDB/fdb-go/fdb"
 )
 
 // Tuple is a slice of objects that can be encoded as FoundationDB tuples. If a
@@ -109,6 +110,8 @@ func Pack(t Tuple) ([]byte, error) {
 			encodeInt(buf, int64(e))
 		case []byte:
 			encodeBytes(buf, 0x01, e)
+		case fdb.Key:
+			encodeBytes(buf, 0x01, []byte(e))
 		case string:
 			encodeBytes(buf, 0x02, []byte(e))
 		default:
@@ -208,7 +211,7 @@ func Unpack(b []byte) (Tuple, error) {
 // Range returns the begin and end key that describe the range of keys that
 // encode tuples that strictly begin with t (that is, all tuples of greater
 // length than t of which t is a prefix).
-func Range(t Tuple) ([]byte, []byte, error) {
+func Range(t Tuple) (fdb.Key, fdb.Key, error) {
 	p, e := Pack(t)
 	if e != nil {
 		return []byte{}, []byte{}, e
