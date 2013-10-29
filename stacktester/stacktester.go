@@ -47,7 +47,7 @@ func (sm *StackMachine) waitAndPop() (ret stackEntry) {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
 			case fdb.Error:
-				p, e := tuple.Pack(tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r)))})
+				p, e := tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r)))}.Pack()
 				if e != nil {
 					panic(e)
 				}
@@ -90,7 +90,7 @@ func (sm *StackMachine) pushRange(idx int, sl []fdb.KeyValue) {
 		t = append(t, kv.Value)
 	}
 
-	p, e := tuple.Pack(t)
+	p, e := t.Pack()
 	if e != nil {
 		panic(e)
 	}
@@ -131,7 +131,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
 			case fdb.Error:
-				p, e := tuple.Pack(tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r)))})
+				p, e := tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r)))}.Pack()
 				if e != nil {
 					panic(e)
 				}
@@ -213,7 +213,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 			var keyt tuple.Tuple
 			keyt = append(keyt, int64(i))
 			keyt = append(keyt, int64(el.idx))
-			pk, e := tuple.Pack(keyt)
+			pk, e := keyt.Pack()
 			if e != nil {
 				panic(e)
 			}
@@ -221,7 +221,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 
 			var valt tuple.Tuple
 			valt = append(valt, el.item)
-			pv, e := tuple.Pack(valt)
+			pv, e := valt.Pack()
 			if e != nil {
 				panic(e)
 			}
@@ -383,7 +383,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		for i := 0; i < int(count); i++ {
 			t = append(t, sm.waitAndPop().item)
 		}
-		p, e := tuple.Pack(t)
+		p, e := t.Pack()
 		if e != nil {
 			panic(e)
 		}
@@ -394,7 +394,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 			panic(e)
 		}
 		for _, el := range(t) {
-			p, e := tuple.Pack(tuple.Tuple{el})
+			p, e := tuple.Tuple{el}.Pack()
 			if e != nil {
 				panic(e)
 			}
@@ -406,7 +406,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		for i := 0; i < int(count); i++ {
 			t = append(t, sm.waitAndPop().item)
 		}
-		begin, end, e := tuple.Range(t)
+		begin, end, e := t.Range()
 		if e != nil {
 			panic(e)
 		}
@@ -485,7 +485,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 }
 
 func (sm *StackMachine) Run() {
-	begin, end, e := tuple.Range(tuple.Tuple{sm.prefix})
+	begin, end, e := tuple.Tuple{sm.prefix}.Range()
 	if e != nil {
 		panic(e)
 	}

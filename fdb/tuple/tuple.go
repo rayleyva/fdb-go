@@ -97,7 +97,7 @@ func encodeInt(buf *bytes.Buffer, i int64) {
 
 // Pack returns a byte slice encoding the provided tuple, or an error if the
 // tuple contains any invalid elements.
-func Pack(t Tuple) ([]byte, error) {
+func (t Tuple) Pack() ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	for i, e := range(t) {
@@ -211,8 +211,8 @@ func Unpack(b []byte) (Tuple, error) {
 // Range returns the begin and end key that describe the range of keys that
 // encode tuples that strictly begin with t (that is, all tuples of greater
 // length than t of which t is a prefix).
-func Range(t Tuple) (fdb.Key, fdb.Key, error) {
-	p, e := Pack(t)
+func (t Tuple) Range() (fdb.Key, fdb.Key, error) {
+	p, e := t.Pack()
 	if e != nil {
 		return []byte{}, []byte{}, e
 	}
