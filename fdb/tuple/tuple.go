@@ -95,9 +95,19 @@ func encodeInt(buf *bytes.Buffer, i int64) {
 	buf.Write(ibuf.Bytes()[8-n:])
 }
 
-// Pack returns a byte slice encoding the provided tuple, or an error if the
-// tuple contains any invalid elements.
-func (t Tuple) Pack() ([]byte, error) {
+type ElementError struct {
+	Tuple Tuple
+	Index int
+}
+
+func (e *ElementError) Error() string {
+	return fmt.Sprintf("Unencodable element at index %d (%v, type %T)", e.Index, e.Tuple[e.Index], e.Tuple[e.Index])
+}
+
+// Pack returns a byte slice encoding the provided tuple. Pack will panic if the
+// tuple contains an element of any type other than int, int64, string, []byte
+// or nil.
+func (t Tuple) Pack() []byte {
 	buf := new(bytes.Buffer)
 
 	for i, e := range(t) {
@@ -115,11 +125,11 @@ func (t Tuple) Pack() ([]byte, error) {
 		case string:
 			encodeBytes(buf, 0x02, []byte(e))
 		default:
-			return []byte{}, fmt.Errorf("Unencodable type at index %d (%v, %T)", i, e, e)
+			panic(&ElementError{t, i})
 		}
 	}
 
-	return buf.Bytes(), nil
+	return buf.Bytes()
 }
 
 func findTerminator(b []byte) int {
@@ -210,12 +220,11 @@ func Unpack(b []byte) (Tuple, error) {
 
 // Range returns the begin and end key that describe the range of keys that
 // encode tuples that strictly begin with t (that is, all tuples of greater
-// length than t of which t is a prefix).
-func (t Tuple) Range() (fdb.Key, fdb.Key, error) {
-	p, e := t.Pack()
-	if e != nil {
-		return []byte{}, []byte{}, e
-	}
+// length than t of which t is a prefix). Range will panic if the tuple contains
+// an element of any type other than int, int64, string, []byte or nil.
+func (t Tuple) Range() (fdb.Key, fdb.Key) {
+	p := t.Pack()
+
 	begin := make([]byte, len(p) + 1)
 	copy(begin, p)
 
@@ -223,5 +232,5 @@ func (t Tuple) Range() (fdb.Key, fdb.Key, error) {
 	copy(end, p)
 	end[len(p)] = 0xFF
 
-	return begin, end, nil
+	return begin, end
 }

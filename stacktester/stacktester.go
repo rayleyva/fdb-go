@@ -47,11 +47,7 @@ func (sm *StackMachine) waitAndPop() (ret stackEntry) {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
 			case fdb.Error:
-				p, e := tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r)))}.Pack()
-				if e != nil {
-					panic(e)
-				}
-				ret.item = p
+				ret.item = tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r)))}.Pack()
 			default:
 				panic(r)
 			}
@@ -90,12 +86,7 @@ func (sm *StackMachine) pushRange(idx int, sl []fdb.KeyValue) {
 		t = append(t, kv.Value)
 	}
 
-	p, e := t.Pack()
-	if e != nil {
-		panic(e)
-	}
-
-	sm.store(idx, p)
+	sm.store(idx, t.Pack())
 }
 
 func (sm *StackMachine) store(idx int, item interface{}) {
@@ -131,11 +122,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
 			case fdb.Error:
-				p, e := tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r)))}.Pack()
-				if e != nil {
-					panic(e)
-				}
-				sm.store(idx, p)
+				sm.store(idx, tuple.Tuple{[]byte("ERROR"), []byte(fmt.Sprintf("%d", int(r)))}.Pack())
 			default:
 				panic(r)
 			}
@@ -213,18 +200,11 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 			var keyt tuple.Tuple
 			keyt = append(keyt, int64(i))
 			keyt = append(keyt, int64(el.idx))
-			pk, e := keyt.Pack()
-			if e != nil {
-				panic(e)
-			}
-			pk = append(prefix, pk...)
+			pk := append(prefix, keyt.Pack()...)
 
 			var valt tuple.Tuple
 			valt = append(valt, el.item)
-			pv, e := valt.Pack()
-			if e != nil {
-				panic(e)
-			}
+			pv := valt.Pack()
 
 			vl := 40000
 			if len(pv) < vl {
@@ -383,22 +363,14 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		for i := 0; i < int(count); i++ {
 			t = append(t, sm.waitAndPop().item)
 		}
-		p, e := t.Pack()
-		if e != nil {
-			panic(e)
-		}
-		sm.store(idx, p)
+		sm.store(idx, t.Pack())
 	case "TUPLE_UNPACK":
 		t, e := tuple.Unpack(sm.waitAndPop().item.([]byte))
 		if e != nil {
 			panic(e)
 		}
 		for _, el := range(t) {
-			p, e := tuple.Tuple{el}.Pack()
-			if e != nil {
-				panic(e)
-			}
-			sm.store(idx, p)
+			sm.store(idx, tuple.Tuple{el}.Pack())
 		}
 	case "TUPLE_RANGE":
 		var t tuple.Tuple
@@ -406,10 +378,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		for i := 0; i < int(count); i++ {
 			t = append(t, sm.waitAndPop().item)
 		}
-		begin, end, e := t.Range()
-		if e != nil {
-			panic(e)
-		}
+		begin, end := t.Range()
 		sm.store(idx, begin)
 		sm.store(idx, end)
 	case "START_THREAD":
@@ -485,10 +454,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 }
 
 func (sm *StackMachine) Run() {
-	begin, end, e := tuple.Tuple{sm.prefix}.Range()
-	if e != nil {
-		panic(e)
-	}
+	begin, end := tuple.Tuple{sm.prefix}.Range()
 
 	r, e := db.Transact(func (tr fdb.Transaction) (interface{}, error) {
 		return tr.GetRange(begin, end, fdb.RangeOptions{}).GetSliceOrPanic(), nil
