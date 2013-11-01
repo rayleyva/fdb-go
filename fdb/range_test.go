@@ -33,16 +33,16 @@ func ExamplePrefixRange() {
 
 	// Clear and initialize data in this transaction. In examples we do not
 	// commit transactions to avoid mutating a real database.
-	tr.ClearRange(nil, []byte{0xFF})
-	tr.Set([]byte("alpha"), []byte("1"))
-	tr.Set([]byte("alphabetA"), []byte("2"))
-	tr.Set([]byte("alphabetB"), []byte("3"))
-	tr.Set([]byte("alphabetize"), []byte("4"))
-	tr.Set([]byte("beta"), []byte("5"))
+	tr.ClearRange(fdb.KeyRange{fdb.Key(""), fdb.Key{0xFF}})
+	tr.Set(fdb.Key("alpha"), []byte("1"))
+	tr.Set(fdb.Key("alphabetA"), []byte("2"))
+	tr.Set(fdb.Key("alphabetB"), []byte("3"))
+	tr.Set(fdb.Key("alphabetize"), []byte("4"))
+	tr.Set(fdb.Key("beta"), []byte("5"))
 
 	// Construct the range of all keys beginning with "alphabet"
-	begin, end, _ := fdb.PrefixRange([]byte("alphabet"))
-	kvs, _ := tr.GetRange(begin, end, fdb.RangeOptions{}).GetSliceWithError()
+	pr, _ := fdb.PrefixRange([]byte("alphabet"))
+	kvs, _ := tr.GetRange(pr, fdb.RangeOptions{}).GetSliceWithError()
 
 	for _, kv := range kvs {
 		fmt.Printf("%s: %s\n", string(kv.Key), string(kv.Value))
@@ -61,12 +61,12 @@ func ExampleRangeIterator() {
 
 	// Clear and initialize data in this transaction. In examples we do not
 	// commit transactions to avoid mutating a real database.
-	tr.ClearRange(nil, []byte{0xFF})
-	tr.Set([]byte("apple"), []byte("foo"))
-	tr.Set([]byte("cherry"), []byte("baz"))
-	tr.Set([]byte("banana"), []byte("bar"))
+	tr.ClearRange(fdb.KeyRange{fdb.Key(""), fdb.Key{0xFF}})
+	tr.Set(fdb.Key("apple"), []byte("foo"))
+	tr.Set(fdb.Key("cherry"), []byte("baz"))
+	tr.Set(fdb.Key("banana"), []byte("bar"))
 
-	rr := tr.GetRange([]byte(""), []byte{0xFF}, fdb.RangeOptions{})
+	rr := tr.GetRange(fdb.KeyRange{fdb.Key(""), fdb.Key{0xFF}}, fdb.RangeOptions{})
 	ri := rr.Iterator()
 
 	// Advance() will return true until the iterator is exhausted
