@@ -50,7 +50,7 @@ func (e Error) Error() string {
 }
 
 // A Transactor represents an object that can execute a transactional
-// function. Functions that receive a Transactor can be called with either a
+// function. Functions that accept a Transactor can be called with either a
 // Database or a Transaction, allowing them to be composed transactionally.
 type Transactor interface {
 	Transact(func (tr Transaction) (interface{}, error)) (interface{}, error)
@@ -264,17 +264,21 @@ func byteSliceToPtr(b []byte) *C.uint8_t {
 // KeyConvertible is the interface implemented by types which may be used as
 // FoundationDB Keys. The fdb.Key type satisfies the KeyConvertible interface.
 type KeyConvertible interface {
-	ToFDBKeyBytes() []byte
+	ToFDBKey() Key
 }
 
 // Key represents a FoundationDB key, a lexicographically-ordered sequence of
 // bytes. Key implements the KeyConvertible and Selectable interfaces.
 type Key []byte
 
-func (k Key) ToFDBKeyBytes() []byte {
-	return []byte(k)
+// ToFDBKey allows Key to (trivially) satisfy the KeyConvertible interface.
+func (k Key) ToFDBKey() Key {
+	return k
 }
 
+// ToFDBKeySelector allows Key to satisfy the Selectable interface. The returned
+// selector describes the first key in the database lexicographically greater
+// than or equal to k.
 func (k Key) ToFDBKeySelector() KeySelector {
 	return FirstGreaterOrEqual(k)
 }

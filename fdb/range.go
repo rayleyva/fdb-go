@@ -59,11 +59,75 @@ type RangeOptions struct {
 	Reverse bool
 }
 
+// Range is the interface that ... FIXME: help. Key points are that the
+// endpoints are key selectors that are resolved to keys, unlike ExactRange, and
+// that when passed to any FDB API function the range is half-closed,
+// i.e. [begin,end).
+type Range interface {
+	BeginKeySelector() KeySelector
+	EndKeySelector() KeySelector
+}
+
+// ExactRange is the interface that ... FIXME: help. Key points are that the
+// endpoints must be specific keys, unlike Range (although ExactRange satisfies
+// Range), and that when passed to any FDB API function the range is
+// half-closed, i.e. [begin,end).
+type ExactRange interface {
+	// BeginKey returns the Key specifying the (closed) beginning of this range.
+	BeginKey() Key
+
+	// EndKey returns the Key specifying the (open) end of this range.
+	EndKey() Key
+
+	// An object that implements ExactRange must also implement Range
+	// (logically, by returning FirstGreaterOrEqual(BeginKey()) and
+	// FirstGreaterOrEqual(EndKey()).
+	Range
+}
+
+// KeyRange implements ExactRange directly from a pair of KeyConvertible
+// objects. Note that the default zero-value of KeyRange specifies an empty
+// range before all keys in the database.
+type KeyRange struct {
+	Begin, End KeyConvertible
+}
+
+func (kr KeyRange) BeginKey() Key {
+	return kr.Begin.ToFDBKey()
+}
+
+func (kr KeyRange) EndKey() Key {
+	return kr.End.ToFDBKey()
+}
+
+func (kr KeyRange) BeginKeySelector() KeySelector {
+	return FirstGreaterOrEqual(kr.Begin)
+}
+
+func (kr KeyRange) EndKeySelector() KeySelector {
+	return FirstGreaterOrEqual(kr.End)
+}
+
+// SelectorRange implements Range directly from a pair of Selectable
+// objects. Note that the default zero-value of SelectorRange specifies an empty
+// range before all keys in the database.
+type SelectorRange struct {
+	Begin, End Selectable
+}
+
+func (sr SelectorRange) BeginKeySelector() KeySelector {
+	return sr.Begin.ToFDBKeySelector()
+}
+
+func (sr SelectorRange) EndKeySelector() KeySelector {
+	return sr.End.ToFDBKeySelector()
+}
+
 // RangeResult is a handle to the asynchronous result of a range
 // read. RangeResult is safe for concurrent use by multiple goroutines.
 type RangeResult struct {
 	t *transaction
-	begin, end KeySelector
+	sr SelectorRange
 	options RangeOptions
 	snapshot bool
 	f *futureKeyValueArray
@@ -114,8 +178,7 @@ func (rr RangeResult) Iterator() *RangeIterator {
 	return &RangeIterator{
 		t: rr.t,
 		f: rr.f,
-		begin: rr.begin,
-		end: rr.end,
+		sr: rr.sr,
 		options: rr.options,
 		iteration: 1,
 		snapshot: rr.snapshot,
@@ -131,7 +194,7 @@ func (rr RangeResult) Iterator() *RangeIterator {
 type RangeIterator struct {
 	t *transaction
 	f *futureKeyValueArray
-	begin, end KeySelector
+	sr SelectorRange
 	options RangeOptions
 	iteration int
 	done bool
@@ -177,14 +240,14 @@ func (ri *RangeIterator) fetchNextBatch() {
 	}
 
 	if ri.options.Reverse {
-		ri.end = FirstGreaterOrEqual(ri.kvs[ri.index-1].Key)
+		ri.sr.End = FirstGreaterOrEqual(ri.kvs[ri.index-1].Key)
 	} else {
-		ri.begin = FirstGreaterThan(ri.kvs[ri.index-1].Key)
+		ri.sr.Begin = FirstGreaterThan(ri.kvs[ri.index-1].Key)
 	}
 
 	ri.iteration += 1
 
-	f := ri.t.doGetRange(ri.begin, ri.end, ri.options, ri.snapshot, ri.iteration)
+	f := ri.t.doGetRange(ri.sr, ri.options, ri.snapshot, ri.iteration)
 	ri.f = &f
 }
 
@@ -234,12 +297,15 @@ func strinc(prefix []byte) ([]byte, error) {
 	return nil, fmt.Errorf("Key must contain at least one byte not equal to 0xFF")
 }
 
-// PrefixRange returns the begin and end key that describe the range of keys
-// that begin with the provided prefix.
-func PrefixRange(prefix []byte) (Key, Key, error) {
-	end, e := strinc(prefix)
+// PrefixRange returns the KeyRange describing the range of keys k such that
+// bytes.HasPrefix(k, prefix) is true. PrefixRange returns an empty range and an
+// error if prefix consists entirely of zero of more 0xFF bytes.
+func PrefixRange(prefix []byte) (KeyRange, error) {
+	begin := make([]byte, len(prefix))
+	copy(begin, prefix)
+	end, e := strinc(begin)
 	if e != nil {
-		return nil, nil, e
+		return KeyRange{}, nil
 	}
-	return prefix, end, nil
+	return KeyRange{Key(begin), Key(end)}, nil
 }

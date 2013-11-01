@@ -38,8 +38,8 @@ import (
 )
 
 // Tuple is a slice of objects that can be encoded as FoundationDB tuples. If a
-// tuple contains elements of types other than []byte, string, int64 or nil, an
-// error will be returned when the Tuple is packed.
+// tuple contains elements of types other than []byte, string, int64, int or
+// nil, an error will be returned when the Tuple is packed.
 //
 // Given a Tuple T containing objects only of these types, then T will be
 // identical to the Tuple returned by unpacking the byte slice obtained by
@@ -105,7 +105,7 @@ func (e *ElementError) Error() string {
 }
 
 // Pack returns a byte slice encoding the provided tuple. Pack will panic if the
-// tuple contains an element of any type other than int, int64, string, []byte
+// tuple contains an element of any type other than []byte, string, int64, int
 // or nil.
 func (t Tuple) Pack() []byte {
 	buf := new(bytes.Buffer)
@@ -218,11 +218,11 @@ func Unpack(b []byte) (Tuple, error) {
 	return t, nil
 }
 
-// Range returns the begin and end key that describe the range of keys that
-// encode tuples that strictly begin with t (that is, all tuples of greater
-// length than t of which t is a prefix). Range will panic if the tuple contains
-// an element of any type other than int, int64, string, []byte or nil.
-func (t Tuple) Range() (fdb.Key, fdb.Key) {
+// Range returns the KeyRange that describes the keys encoding tuples that
+// strictly begin with t (that is, all tuples of greater length than t of which
+// t is a prefix). Range will panic if the tuple contains an element of any type
+// other than []byte, string, int64, int, or nil.
+func (t Tuple) Range() fdb.KeyRange {
 	p := t.Pack()
 
 	begin := make([]byte, len(p) + 1)
@@ -232,5 +232,5 @@ func (t Tuple) Range() (fdb.Key, fdb.Key) {
 	copy(end, p)
 	end[len(p)] = 0xFF
 
-	return begin, end
+	return fdb.KeyRange{fdb.Key(begin), fdb.Key(end)}
 }

@@ -30,13 +30,13 @@ type Selectable interface {
 
 // KeySelector represents a description of a key in a FoundationDB database. A
 // KeySelector may be resolved to a specific key with the GetKey method, or used
-// to specify the endpoints of a range in a GetRange function.
+// as the endpoints of a SelectorRange to be used with a GetRange function.
 //
 // The most common key selectors are constructed with the functions documented
 // below. For details of how KeySelectors are specified and resolved, see
 // https://foundationdb.com/documentation/developer-guide.html#key-selectors.
 type KeySelector struct {
-	Key Key
+	Key KeyConvertible
 	OrEqual bool
 	Offset int
 }
@@ -47,28 +47,28 @@ func (ks KeySelector) ToFDBKeySelector() KeySelector {
 
 // LastLessThan returns the KeySelector specifying the lexigraphically greatest
 // key present in the database which is lexigraphically strictly less than the
-// given (byte slice) key.
+// given key.
 func LastLessThan(key KeyConvertible) KeySelector {
-	return KeySelector{key.ToFDBKeyBytes(), false, 0}
+	return KeySelector{key, false, 0}
 }
 
 // LastLessOrEqual returns the KeySelector specifying the lexigraphically
 // greatest key present in the database which is lexigraphically less than or
-// equal to the given (byte slice) key.
+// equal to the given key.
 func LastLessOrEqual(key KeyConvertible) KeySelector {
-	return KeySelector{key.ToFDBKeyBytes(), true, 0}
+	return KeySelector{key, true, 0}
 }
 
 // FirstGreaterThan returns the KeySelector specifying the lexigraphically least
 // key present in the database which is lexigraphically strictly greater than
-// the given (byte slice) key.
+// the given key.
 func FirstGreaterThan(key KeyConvertible) KeySelector {
-	return KeySelector{key.ToFDBKeyBytes(), true, 1}
+	return KeySelector{key, true, 1}
 }
 
 // FirstGreaterOrEqual returns the KeySelector specifying the lexigraphically
 // least key present in the database which is lexigraphically greater than or
-// equal to the given (byte slice) key.
+// equal to the given key.
 func FirstGreaterOrEqual(key KeyConvertible) KeySelector {
-	return KeySelector{key.ToFDBKeyBytes(), false, 1}
+	return KeySelector{key, false, 1}
 }

@@ -164,13 +164,13 @@ func (d Database) GetKey(sel Selectable) (Key, error) {
 	return v.(Key), nil
 }
 
-// GetRange returns a slice of KeyValue objects kv where beginKey <= kv.Key <
-// endKey, ordered by kv.Key. beginKey and endKey are the keys referenced by the
-// selectors begin and end. This read blocks the current goroutine until
-// complete.
-func (d Database) GetRange(begin Selectable, end Selectable, options RangeOptions) ([]KeyValue, error) {
+// GetRange returns a slice of KeyValue objects kv such that beginKey <= kv.Key
+// < endKey, ordered by kv.Key. beginKey and endKey are the keys described by
+// the key selectors r.BeginKeySelector() and r.EndKeySelector(). This read
+// blocks the current goroutine until complete.
+func (d Database) GetRange(r Range, options RangeOptions) ([]KeyValue, error) {
 	v, e := d.Transact(func (tr Transaction) (interface{}, error) {
-		return tr.GetRange(begin, end, options).GetSliceOrPanic(), nil
+		return tr.GetRange(r, options).GetSliceOrPanic(), nil
 	})
 	if e != nil {
 		return nil, e
@@ -206,12 +206,12 @@ func (d Database) Clear(key KeyConvertible) error {
 	return nil
 }
 
-// ClearRange removes all keys k where begin <= k < end, and their associated
-// values. This change will be committed immediately and blocks the current
-// goroutine until complete.
-func (d Database) ClearRange(begin KeyConvertible, end KeyConvertible) error {
+// ClearRange removes all keys k such that er.BeginKey() <= k < er.EndKey(), and
+// their associated values. This change will be committed immediately and blocks
+// the current goroutine until complete.
+func (d Database) ClearRange(er ExactRange) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
-		tr.ClearRange(begin, end)
+		tr.ClearRange(er)
 		return nil, nil
 	})
 	if e != nil {
