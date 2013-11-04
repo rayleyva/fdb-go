@@ -40,6 +40,7 @@ type ReadTransaction interface {
 	GetRange(r Range, options RangeOptions) RangeResult
 	GetReadVersion() FutureVersion
 	GetDatabase() Database
+	LocalityGetAddressesForKey(key KeyConvertible) FutureStringArray
 }
 
 // Transaction is a handle to a FoundationDB transaction. Transaction is a
@@ -383,6 +384,22 @@ func (t Transaction) Options() TransactionOptions {
 	return TransactionOptions{t.transaction}
 }
 
+func localityGetAddressesForKey(t *transaction, key KeyConvertible) FutureStringArray {
+	kb := key.ToFDBKey()
+
+	f := &future{C.fdb_transaction_get_addresses_for_key(t.ptr, byteSliceToPtr(kb), C.int(len(kb)))}
+	runtime.SetFinalizer(f, (*future).destroy)
+	return FutureStringArray{f}
+}
+
+// LocalityGetAddressesForKey returns the (future) public network addresses of
+// each of the storage servers responsible for storing key and its associated
+// value. The read is performed asynchronously and does not block the calling
+// goroutine. The future will become ready when the read is complete.
+func (t Transaction) LocalityGetAddressesForKey(key KeyConvertible) FutureStringArray {
+	return localityGetAddressesForKey(t.transaction, key)
+}
+
 // Snapshot is a handle to a FoundationDB transaction snapshot, suitable for
 // performing snapshot reads. Snapshot reads offer a more relaxed isolation
 // level than FoundationDB's default serializable isolation, reducing
@@ -418,4 +435,12 @@ func (s Snapshot) GetReadVersion() FutureVersion {
 // interacting.
 func (s Snapshot) GetDatabase() Database {
 	return s.transaction.db
+}
+
+// LocalityGetAddressesForKey returns the (future) public network addresses of
+// each of the storage servers responsible for storing key and its associated
+// value. The read is performed asynchronously and does not block the calling
+// goroutine. The future will become ready when the read is complete.
+func (s Snapshot) LocalityGetAddressesForKey(key KeyConvertible) FutureStringArray {
+	return localityGetAddressesForKey(s.transaction, key)
 }

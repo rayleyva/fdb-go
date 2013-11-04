@@ -273,3 +273,60 @@ func (d Database) ClearAndWatch(key KeyConvertible) (FutureNil, error) {
 func (d Database) Options() DatabaseOptions {
 	return DatabaseOptions{d.database}
 }
+
+// LocalityGetAddressesForKey returns the public network addresses of each of
+// the storage servers responsible for storing key and its associated
+// value. This read blocks the current goroutine until complete.
+func (d Database) LocalityGetAddressesForKey(key KeyConvertible) ([]string, error) {
+	v, e := d.Transact(func (tr Transaction) (interface{}, error) {
+		return tr.LocalityGetAddressesForKey(key).GetOrPanic(), nil
+	})
+	if e != nil {
+		return nil, e
+	}
+	return v.([]string), nil
+}
+
+// LocalityGetBoundaryKeys returns a slice of keys that fall within the range
+// where each key is located at the start of a contiguous range stored on a
+// single server.
+//
+// If limit is non-zero, only the first limit keys will be returned. In large
+// databases, the number of boundary keys may be large. In these cases, a
+// non-zero limit should be used, along with multiple calls to
+// LocalityGetBoundaryKeys.
+//
+// If readVersion is non-zero, the boundary keys as of readVersion will be
+// returned.
+func (d Database) LocalityGetBoundaryKeys(er ExactRange, limit int, readVersion int64) ([]Key, error) {
+	tr, e := d.CreateTransaction()
+	if e != nil {
+		return nil, e
+	}
+
+	if readVersion != 0 {
+		tr.SetReadVersion(readVersion)
+	}
+
+	tr.Options().SetAccessSystemKeys()
+
+	ffer := KeyRange{append(Key("\xFF/keyServers/"), er.BeginKey()...), append(Key("\xFF/keyServers/"), er.EndKey()...)}
+
+	kvs, e := tr.Snapshot().GetRange(ffer, RangeOptions{Limit: limit}).GetSliceWithError()
+	if e != nil {
+		return nil, e
+	}
+
+	size := len(kvs)
+	if limit != 0 && limit < size {
+		size = limit
+	}
+
+	boundaries := make([]Key, size)
+
+	for i := 0; i < size; i++ {
+		boundaries[i] = kvs[i].Key[13:]
+	}
+
+	return boundaries, nil
+}

@@ -347,3 +347,34 @@ func (f FutureVersion) GetOrPanic() int64 {
 	}
 	return val
 }
+
+type FutureStringArray struct {
+	*future
+}
+
+func (f FutureStringArray) GetWithError() ([]string, error) {
+	fdb_future_block_until_ready(f.ptr)
+
+	var strings **C.char
+	var count C.int
+
+	if err := C.fdb_future_get_string_array(f.ptr, (***C.char)(unsafe.Pointer(&strings)), &count); err != 0 {
+		return nil, Error(err)
+	}
+
+	ret := make([]string, int(count))
+
+	for i := 0; i < int(count); i++ {
+		ret[i] = C.GoString((*C.char)(*(**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(strings))+uintptr(i*8)))))
+	}
+
+	return ret, nil
+}
+
+func (f FutureStringArray) GetOrPanic() []string {
+	val, err := f.GetWithError()
+	if err != nil {
+		panic(err)
+	}
+	return val
+}
