@@ -42,7 +42,15 @@ func notifyChannel(ch *chan struct{}) {
 	*ch <- struct{}{}
 }
 
-// Error represents a low-level error returned by the FoundationDB C library.
+// Error represents a low-level error returned by the FoundationDB C library. An
+// Error may be returned by any FoundationDB API function that returns error, or
+// as a panic from any FoundationDB API function whose name ends with OrPanic.
+//
+// An Error may be cast to an int for comparison against the list of
+// FoundationDB error codes at
+// https://foundationdb.com/documentation/api-error-codes.html, but generally
+// should be passed to (Transaction).OnError. When using (Database).Transact,
+// non-fatal errors will be retried automatically.
 type Error C.fdb_error_t
 
 func (e Error) Error() string {

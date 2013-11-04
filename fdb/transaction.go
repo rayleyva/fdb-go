@@ -346,6 +346,9 @@ func addConflictRange(t *transaction, er ExactRange, crtype conflictRangeType) e
 // ranges as if you had read the range. As a result, other transactions that
 // write a key in this range could cause the transaction to fail with a
 // conflict.
+//
+// For more information on conflict ranges, see
+// https://foundationdb.com/documentation/developer-guide.html#conflict-ranges.
 func (t Transaction) AddReadConflictRange(er ExactRange) error {
 	return addConflictRange(t.transaction, er, conflictRangeTypeRead)
 }
@@ -359,6 +362,9 @@ func copyAndAppend(orig []byte, b byte) []byte {
 // AddReadConflictKey adds a key to the transaction’s read conflict ranges as if
 // you had read the key. As a result, other transactions that concurrently write
 // this key could cause the transaction to fail with a conflict.
+//
+// For more information on conflict ranges, see
+// https://foundationdb.com/documentation/developer-guide.html#conflict-ranges.
 func (t Transaction) AddReadConflictKey(key KeyConvertible) error {
 	return addConflictRange(t.transaction, KeyRange{key, Key(copyAndAppend(key.ToFDBKey(), 0x00))}, conflictRangeTypeRead)
 }
@@ -367,6 +373,9 @@ func (t Transaction) AddReadConflictKey(key KeyConvertible) error {
 // conflict ranges as if you had cleared the range. As a result, other
 // transactions that concurrently read a key in this range could fail with a
 // conflict.
+//
+// For more information on conflict ranges, see
+// https://foundationdb.com/documentation/developer-guide.html#conflict-ranges.
 func (t Transaction) AddWriteConflictRange(er ExactRange) error {
 	return addConflictRange(t.transaction, er, conflictRangeTypeWrite)
 }
@@ -374,6 +383,9 @@ func (t Transaction) AddWriteConflictRange(er ExactRange) error {
 // AddWriteConflictKey adds a key to the transaction’s write conflict ranges as
 // if you had written the key. As a result, other transactions that concurrently
 // read this key could fail with a conflict.
+//
+// For more information on conflict ranges, see
+// https://foundationdb.com/documentation/developer-guide.html#conflict-ranges.
 func (t Transaction) AddWriteConflictKey(key KeyConvertible) error {
 	return addConflictRange(t.transaction, KeyRange{key, Key(copyAndAppend(key.ToFDBKey(), 0x00))}, conflictRangeTypeWrite)
 }
