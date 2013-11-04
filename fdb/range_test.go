@@ -42,8 +42,9 @@ func ExamplePrefixRange() {
 
 	// Construct the range of all keys beginning with "alphabet"
 	pr, _ := fdb.PrefixRange([]byte("alphabet"))
-	kvs, _ := tr.GetRange(pr, fdb.RangeOptions{}).GetSliceWithError()
 
+	// Read and process the range
+	kvs, _ := tr.GetRange(pr, fdb.RangeOptions{}).GetSliceWithError()
 	for _, kv := range kvs {
 		fmt.Printf("%s: %s\n", string(kv.Key), string(kv.Value))
 	}

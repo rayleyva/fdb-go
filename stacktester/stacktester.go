@@ -256,7 +256,7 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		}
 		sm.store(idx, []byte("GOT_COMMITTED_VERSION"))
 	case "GET_KEY":
-		sel := fdb.KeySelector{sm.waitAndPop().item.([]byte), int64ToBool(sm.waitAndPop().item.(int64)), int(sm.waitAndPop().item.(int64))}
+		sel := fdb.KeySelector{fdb.Key(sm.waitAndPop().item.([]byte)), int64ToBool(sm.waitAndPop().item.(int64)), int(sm.waitAndPop().item.(int64))}
 		switch o := obj.(type) {
 		case fdb.Database:
 			v, e := o.GetKey(sel)
@@ -279,24 +279,24 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		mode := sm.waitAndPop().item.(int64)
 		switch o := obj.(type) {
 		case fdb.Database:
-			v, e := db.GetRange(begin, end, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)})
+			v, e := db.GetRange(fdb.KeyRange{begin, end}, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)})
 			if e != nil {
 				panic(e)
 			}
 			sm.pushRange(idx, v)
 		case fdb.ReadTransaction:
-			sm.pushRange(idx, o.GetRange(begin, end, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)}).GetSliceOrPanic())
+			sm.pushRange(idx, o.GetRange(fdb.KeyRange{begin, end}, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)}).GetSliceOrPanic())
 		}
 	case "CLEAR_RANGE":
 		switch o := obj.(type) {
 		case fdb.Database:
-			e := o.ClearRange(fdb.Key(sm.waitAndPop().item.([]byte)), fdb.Key(sm.waitAndPop().item.([]byte)))
+			e := o.ClearRange(fdb.KeyRange{fdb.Key(sm.waitAndPop().item.([]byte)), fdb.Key(sm.waitAndPop().item.([]byte))})
 			if e != nil {
 				panic(e)
 			}
 			sm.store(idx, []byte("RESULT_NOT_PRESENT"))
 		case fdb.Transaction:
-			o.ClearRange(fdb.Key(sm.waitAndPop().item.([]byte)), fdb.Key(sm.waitAndPop().item.([]byte)))
+			o.ClearRange(fdb.KeyRange{fdb.Key(sm.waitAndPop().item.([]byte)), fdb.Key(sm.waitAndPop().item.([]byte))})
 		}
 	case "GET_RANGE_STARTS_WITH":
 		prefix := sm.waitAndPop().item.([]byte)
@@ -307,23 +307,23 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		}
 		reverse := int64ToBool(sm.waitAndPop().item.(int64))
 		mode := sm.waitAndPop().item.(int64)
-		begin, end, e := fdb.PrefixRange(prefix)
+		er, e := fdb.PrefixRange(prefix)
 		if e != nil {
 			panic(e)
 		}
 		switch o := obj.(type) {
 		case fdb.Database:
-			v, e := db.GetRange(begin, end, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)})
+			v, e := db.GetRange(er, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)})
 			if e != nil {
 				panic(e)
 			}
 			sm.pushRange(idx, v)
 		case fdb.ReadTransaction:
-			sm.pushRange(idx, o.GetRange(begin, end, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)}).GetSliceOrPanic())
+			sm.pushRange(idx, o.GetRange(er, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)}).GetSliceOrPanic())
 		}
 	case "GET_RANGE_SELECTOR":
-		begin := fdb.KeySelector{Key: sm.waitAndPop().item.([]byte), OrEqual: int64ToBool(sm.waitAndPop().item.(int64)), Offset: int(sm.waitAndPop().item.(int64))}
-		end := fdb.KeySelector{Key: sm.waitAndPop().item.([]byte), OrEqual: int64ToBool(sm.waitAndPop().item.(int64)), Offset: int(sm.waitAndPop().item.(int64))}
+		begin := fdb.KeySelector{Key: fdb.Key(sm.waitAndPop().item.([]byte)), OrEqual: int64ToBool(sm.waitAndPop().item.(int64)), Offset: int(sm.waitAndPop().item.(int64))}
+		end := fdb.KeySelector{Key: fdb.Key(sm.waitAndPop().item.([]byte)), OrEqual: int64ToBool(sm.waitAndPop().item.(int64)), Offset: int(sm.waitAndPop().item.(int64))}
 		var limit int
 		switch l := sm.waitAndPop().item.(type) {
 		case int64:
@@ -333,29 +333,29 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		mode := sm.waitAndPop().item.(int64)
 		switch o := obj.(type) {
 		case fdb.Database:
-			v, e := db.GetRange(begin, end, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)})
+			v, e := db.GetRange(fdb.SelectorRange{begin, end}, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)})
 			if e != nil {
 				panic(e)
 			}
 			sm.pushRange(idx, v)
 		case fdb.ReadTransaction:
-			sm.pushRange(idx, o.GetRange(begin, end, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)}).GetSliceOrPanic())
+			sm.pushRange(idx, o.GetRange(fdb.SelectorRange{begin, end}, fdb.RangeOptions{Limit: int(limit), Reverse: reverse, Mode: fdb.StreamingMode(mode+1)}).GetSliceOrPanic())
 		}
 	case "CLEAR_RANGE_STARTS_WITH":
 		prefix := sm.waitAndPop().item.([]byte)
-		begin, end, e := fdb.PrefixRange(prefix)
+		er, e := fdb.PrefixRange(prefix)
 		if e != nil {
 			panic(e)
 		}
 		switch o := obj.(type) {
 		case fdb.Database:
-			e := o.ClearRange(begin, end)
+			e := o.ClearRange(er)
 			if e != nil {
 				panic(e)
 			}
 			sm.store(idx, []byte("RESULT_NOT_PRESENT"))
 		case fdb.Transaction:
-			o.ClearRange(begin, end)
+			o.ClearRange(er)
 		}
 	case "TUPLE_PACK":
 		var t tuple.Tuple
@@ -378,9 +378,9 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		for i := 0; i < int(count); i++ {
 			t = append(t, sm.waitAndPop().item)
 		}
-		begin, end := t.Range()
-		sm.store(idx, begin)
-		sm.store(idx, end)
+		kr := t.Range()
+		sm.store(idx, kr.Begin)
+		sm.store(idx, kr.End)
 	case "START_THREAD":
 		newsm := newStackMachine(sm.waitAndPop().item.([]byte), verbose)
 		sm.threads.Add(1)
@@ -390,12 +390,12 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		}()
 	case "WAIT_EMPTY":
 		prefix := sm.waitAndPop().item.([]byte)
-		begin, end, e := fdb.PrefixRange(prefix)
+		er, e := fdb.PrefixRange(prefix)
 		if e != nil {
 			panic(e)
 		}
 		db.Transact(func (tr fdb.Transaction) (interface{}, error) {
-			v := tr.GetRange(begin, end, fdb.RangeOptions{}).GetSliceOrPanic()
+			v := tr.GetRange(er, fdb.RangeOptions{}).GetSliceOrPanic()
 			if len(v) != 0 {
 				panic(fdb.Error(1020))
 			}
@@ -403,13 +403,13 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 		})
 		sm.store(idx, []byte("WAITED_FOR_EMPTY"))
 	case "READ_CONFLICT_RANGE":
-		e = sm.tr.AddReadConflictRange(fdb.Key(sm.waitAndPop().item.([]byte)), fdb.Key(sm.waitAndPop().item.([]byte)))
+		e = sm.tr.AddReadConflictRange(fdb.KeyRange{fdb.Key(sm.waitAndPop().item.([]byte)), fdb.Key(sm.waitAndPop().item.([]byte))})
 		if e != nil {
 			panic(e)
 		}
 		sm.store(idx, []byte("SET_CONFLICT_RANGE"))
 	case "WRITE_CONFLICT_RANGE":
-		e = sm.tr.AddWriteConflictRange(fdb.Key(sm.waitAndPop().item.([]byte)), fdb.Key(sm.waitAndPop().item.([]byte)))
+		e = sm.tr.AddWriteConflictRange(fdb.KeyRange{fdb.Key(sm.waitAndPop().item.([]byte)), fdb.Key(sm.waitAndPop().item.([]byte))})
 		if e != nil {
 			panic(e)
 		}
@@ -454,10 +454,10 @@ func (sm *StackMachine) processInst(idx int, inst tuple.Tuple) {
 }
 
 func (sm *StackMachine) Run() {
-	begin, end := tuple.Tuple{sm.prefix}.Range()
+	er := tuple.Tuple{sm.prefix}.Range()
 
 	r, e := db.Transact(func (tr fdb.Transaction) (interface{}, error) {
-		return tr.GetRange(begin, end, fdb.RangeOptions{}).GetSliceOrPanic(), nil
+		return tr.GetRange(er, fdb.RangeOptions{}).GetSliceOrPanic(), nil
 	})
 	if e != nil {
 		panic(e)
