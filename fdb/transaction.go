@@ -39,6 +39,7 @@ type ReadTransaction interface {
 	GetKey(sel Selectable) FutureKey
 	GetRange(r Range, options RangeOptions) RangeResult
 	GetReadVersion() FutureVersion
+	GetDatabase() Database
 }
 
 // Transaction is a handle to a FoundationDB transaction. Transaction is a
@@ -66,6 +67,7 @@ type Transaction struct {
 
 type transaction struct {
 	ptr *C.FDBTransaction
+	db Database
 }
 
 // TransactionOptions is a handle with which to set options that affect a
@@ -83,6 +85,12 @@ func (opt TransactionOptions) setOpt(code int, param []byte) error {
 
 func (t *transaction) destroy() {
 	C.fdb_transaction_destroy(t.ptr)
+}
+
+// GetDatabase returns a handle to the database with which this transaction is
+// interacting.
+func (t Transaction) GetDatabase() Database {
+	return t.transaction.db
 }
 
 // Transact passes the Transaction receiver object to the caller-provided
@@ -404,4 +412,10 @@ func (s Snapshot) GetRange(r Range, options RangeOptions) RangeResult {
 // Like (Transaction).GetReadVersion(), but as a snapshot read.
 func (s Snapshot) GetReadVersion() FutureVersion {
 	return s.getReadVersion()
+}
+
+// GetDatabase returns a handle to the database with which this snapshot is
+// interacting.
+func (s Snapshot) GetDatabase() Database {
+	return s.transaction.db
 }

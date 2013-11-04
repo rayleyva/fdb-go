@@ -75,7 +75,7 @@ func (d Database) CreateTransaction() (Transaction, error) {
 		return Transaction{}, Error(err)
 	}
 
-	t := &transaction{outt}
+	t := &transaction{outt, d}
 	runtime.SetFinalizer(t, (*transaction).destroy)
 
 	return Transaction{t}, nil
