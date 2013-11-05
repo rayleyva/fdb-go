@@ -29,6 +29,13 @@ func (o NetworkOptions) SetTraceEnable(param string) error {
 	return o.setOpt(30, []byte(param))
 }
 
+// Set internal tuning or debugging knobs
+//
+// Parameter: knob_name=knob_value
+func (o NetworkOptions) SetKnob(param string) error {
+	return o.setOpt(40, []byte(param))
+}
+
 // Set the size of the client location cache. Raising this value can boost performance in very large databases where clients access data in a near-random pattern. Defaults to 100000.
 //
 // Parameter: Max location cache entries
@@ -88,7 +95,7 @@ func (o TransactionOptions) SetCheckWritesEnable() error {
 	return o.setOpt(50, nil)
 }
 
-// Reads performed by a transaction will not see any prior mutations that occured in that transaction, instead seeing the value which was in the database at the transaction's read version. This option may provide a small performance benefit for the client, but also disables a number of client-side optimizations which are beneficial for transactions which tend to read and write the same keys within a single transaction. Also note that with this option invoked any outstanding reads will return errors when transaction commit is called (rather than the normal behavior of commit waiting for outstanding reads to complete).
+// Reads performed by a transaction will not see any prior mutations that occured in that transaction, instead seeing the value which was in the database at the transaction's read version. This option may provide a small performance benefit for the client, but also disables a number of client-side optimizations which are beneficial for transactions which tend to read and write the same keys within a single transaction.
 func (o TransactionOptions) SetReadYourWritesDisable() error {
 	return o.setOpt(51, nil)
 }
@@ -218,15 +225,15 @@ func (d Database) Add(key KeyConvertible, param []byte) error {
 	return nil
 }
 
-// And performs a bitwise ``and`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
-func (t Transaction) And(key KeyConvertible, param []byte) {
+// BitAnd performs a bitwise ``and`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
+func (t Transaction) BitAnd(key KeyConvertible, param []byte) {
 	t.atomicOp(key.ToFDBKey(), param, 6)
 }
 
-// And performs a bitwise ``and`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
-func (d Database) And(key KeyConvertible, param []byte) error {
+// BitAnd performs a bitwise ``and`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
+func (d Database) BitAnd(key KeyConvertible, param []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
-		tr.And(key, param)
+		tr.BitAnd(key, param)
 		return nil, nil
 	})
 	if e != nil {
@@ -235,15 +242,15 @@ func (d Database) And(key KeyConvertible, param []byte) error {
 	return nil
 }
 
-// Or performs a bitwise ``or`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
-func (t Transaction) Or(key KeyConvertible, param []byte) {
+// BitOr performs a bitwise ``or`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
+func (t Transaction) BitOr(key KeyConvertible, param []byte) {
 	t.atomicOp(key.ToFDBKey(), param, 7)
 }
 
-// Or performs a bitwise ``or`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
-func (d Database) Or(key KeyConvertible, param []byte) error {
+// BitOr performs a bitwise ``or`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
+func (d Database) BitOr(key KeyConvertible, param []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
-		tr.Or(key, param)
+		tr.BitOr(key, param)
 		return nil, nil
 	})
 	if e != nil {
@@ -252,15 +259,15 @@ func (d Database) Or(key KeyConvertible, param []byte) error {
 	return nil
 }
 
-// Xor performs a bitwise ``xor`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
-func (t Transaction) Xor(key KeyConvertible, param []byte) {
+// BitXor performs a bitwise ``xor`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
+func (t Transaction) BitXor(key KeyConvertible, param []byte) {
 	t.atomicOp(key.ToFDBKey(), param, 8)
 }
 
-// Xor performs a bitwise ``xor`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
-func (d Database) Xor(key KeyConvertible, param []byte) error {
+// BitXor performs a bitwise ``xor`` operation.  If the existing value in the database is not present or shorter than ``param``, it is first extended to the length of ``param`` with zero bytes.  If ``param`` is shorter than the existing value in the database, the existing value is truncated to match the length of ``param``.
+func (d Database) BitXor(key KeyConvertible, param []byte) error {
 	_, e := d.Transact(func (tr Transaction) (interface{}, error) {
-		tr.Xor(key, param)
+		tr.BitXor(key, param)
 		return nil, nil
 	})
 	if e != nil {

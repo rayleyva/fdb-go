@@ -59,19 +59,23 @@ type RangeOptions struct {
 	Reverse bool
 }
 
-// Range is the interface that ... FIXME: help. Key points are that the
-// endpoints are key selectors that are resolved to keys, unlike ExactRange, and
-// that when passed to any FDB API function the range is half-closed,
-// i.e. [begin,end).
+// Range is the interface that describes all keys between a begin (inclusive)
+// and end (exclusive) key selector. A Range is provided to a read method of the
+// FoundationDB API, and the key selectors are resolved to specific keys in the
+// database while satisfying the read.
 type Range interface {
 	BeginKeySelector() KeySelector
 	EndKeySelector() KeySelector
 }
 
-// ExactRange is the interface that ... FIXME: help. Key points are that the
-// endpoints must be specific keys, unlike Range (although ExactRange satisfies
-// Range), and that when passed to any FDB API function the range is
-// half-closed, i.e. [begin,end).
+// ExactRange is the interface that describes all keys between a begin
+// (inclusive) and end (exclusive) key. An ExactRange is provided to a method of
+// the FoundationDB API that does not already incur a read latency. If you need
+// to specify an exact range using key selectors, you must first resolve the
+// selectors to keys using the GetKey() method.
+//
+// Any object that implements ExactRange also implements Range, and may be used
+// accordingly.
 type ExactRange interface {
 	// BeginKey returns the Key specifying the (closed) beginning of this range.
 	BeginKey() Key

@@ -195,7 +195,9 @@ func int64ToBytes(i int64) ([]byte, error) {
 
 		if scope.Name == "MutationType" {
 			for _, opt := range(scope.Option) {
-				writeMutation(opt)
+				if opt.Description != "Deprecated" { // Eww
+					writeMutation(opt)
+				}
 			}
 			continue
 		}

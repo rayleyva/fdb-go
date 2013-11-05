@@ -91,6 +91,9 @@ func (d Database) CreateTransaction() (Transaction, error) {
 // either explicity check and return error values from (Future).GetWithError(),
 // or call (Future).GetOrPanic(). Transact will recover a panicked fdb.Error and
 // either retry the transaction or return the error.
+//
+// See the Transactor interface for an example of using Transact with
+// Transaction and Database objects.
 func (d Database) Transact(f func(tr Transaction) (interface{}, error)) (ret interface{}, e error) {
 	tr, e := d.CreateTransaction()
 	/* Any error here is non-retryable */

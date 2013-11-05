@@ -418,7 +418,7 @@ func (t Transaction) LocalityGetAddressesForKey(key KeyConvertible) FutureString
 // transaction conflicts but making it harder to reason about concurrency.
 //
 // For more information on snapshot reads, see
-// https://foundationdb.com/documentation/developer-guide.html#using-snapshot-reads.
+// https://foundationdb.com/documentation/developer-guide.html#snapshot-reads.
 type Snapshot struct {
 	*transaction
 }
