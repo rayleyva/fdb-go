@@ -99,6 +99,9 @@ func (t Transaction) GetDatabase() Database {
 //
 // Transact makes Transaction satisfy the Transactor interface, allowing
 // transactional functions to be used compositionally.
+//
+// See the Transactor interface for an example of using Transact with
+// Transaction and Database objects.
 func (t Transaction) Transact(f func (tr Transaction) (interface{}, error)) (interface{}, error) {
 	return f(t)
 }

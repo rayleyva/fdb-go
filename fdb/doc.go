@@ -119,7 +119,7 @@ returned to the caller of Transact().
 In practice, checking for an error from every asynchronous future type in the
 FoundationDB API quickly becomes frustrating. As a convenience, every Future
 type also provides a method GetOrPanic(), which returns the same type and value
-as GetWithError(), but exposes errors via a panic rather than an explicitly
+as GetWithError(), but exposes FoundationDB Errors via a panic rather than an explicitly
 returned error. The above example may be rewritten as:
 
     ret, e := db.Transact(func (tr Transaction) (interface{}, error) {
@@ -140,8 +140,15 @@ returned error. The above example may be rewritten as:
 
 Any panic that occurs during execution of the caller-provided function will be
 recovered by the Transact() method of Database. If the error is an FDB Error, it
-will either result in a retry of the function or returned by Transact(). If the
-error is any other type, Transact() will re-panic the original value.
+will either result in a retry of the function or be returned by Transact(). If
+the error is any other type (panics from code other than GetOrPanic()),
+Transact() will re-panic the original value.
+
+Note that the Transact() method of transaction does not recover panics. The
+Transact() method on Transaction is intended to allow composition of
+transactional functions (i.e. calling a function that takes a Transactor from
+inside another transactional function), and so any panic should be recovered by
+Transact() on Database.
 
 Streaming Modes
 
