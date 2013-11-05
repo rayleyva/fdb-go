@@ -139,7 +139,7 @@ recovered by the Transact() method of Database. If the error is an FDB Error, it
 will either result in a retry of the function or returned by Transact(). If the
 error is any other type, Transact() will re-panic the original value.
 
-Streaming Mode
+Streaming Modes
 
 When using GetRange() methods in the FoundationDB API, clients can request large
 ranges of the database to iterate over. Making such a request doesn't
