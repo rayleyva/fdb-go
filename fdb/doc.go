@@ -33,46 +33,50 @@ https://foundationdb.com/documentation.
 
 Basic Usage
 
-	package main
+A basic interaction with the FoundationDB API is demonstrated below:
 
-	import "github.com/FoundationDB/fdb-go/fdb"
-	import "log"
-	import "fmt"
+    package main
 
-	func main() {
-	    var e error
+    import (
+        "github.com/FoundationDB/fdb-go/fdb"
+        "log"
+        "fmt"
+    )
 
-	    // Different API versions may expose different runtime behaviors.
-	    e = fdb.APIVersion(200)
-	    if e != nil {
-	        log.Fatalf("Unable to load FDB at API version 200 (%v)", e)
-	    }
+    func main() {
+        var e error
 
-	    // Open the default database from the system cluster
-	    db, e := fdb.OpenDefault()
-	    if e != nil {
-	        log.Fatalf("Unable to open default FDB database (%v)", e)
-	    }
+        // Different API versions may expose different runtime behaviors.
+        e = fdb.APIVersion(200)
+        if e != nil {
+            log.Fatalf("Unable to load FDB at API version 200 (%v)", e)
+        }
 
-	    // We can perform reads or writes directly on a database...
-	    e = db.Set(fdb.Key("hello"), []byte("world"))
-	    if e != nil {
-	        log.Fatalf("Unable to set FDB database value (%v)", e)
-	    }
+        // Open the default database from the system cluster
+        db, e := fdb.OpenDefault()
+        if e != nil {
+            log.Fatalf("Unable to open default FDB database (%v)", e)
+        }
 
-	    // or with more control inside a transaction.
-	    ret, e := db.Transact(func (tr fdb.Transaction) (interface{}, error) {
-	        orig := tr.Get(fdb.Key("hello")).GetOrPanic()
-	        tr.Set(fdb.Key("hello"), []byte("universe"))
-	        fmt.Println("Setting hello to universe...")
-	        return orig, nil
-	    })
-	    if e != nil {
-	        log.Fatalf("Unable to perform FDB transaction (%v)", e)
-	    }
+        // We can perform reads or writes directly on a database...
+        e = db.Set(fdb.Key("hello"), []byte("world"))
+        if e != nil {
+            log.Fatalf("Unable to set FDB database value (%v)", e)
+        }
 
-	    fmt.Printf("The original greeting was to: %s\n", string(ret.([]byte)))
-	}
+        // or with more control inside a transaction.
+        ret, e := db.Transact(func (tr fdb.Transaction) (interface{}, error) {
+            orig := tr.Get(fdb.Key("hello")).GetOrPanic()
+            tr.Set(fdb.Key("hello"), []byte("universe"))
+            fmt.Println("Setting hello to universe...")
+            return orig, nil
+        })
+        if e != nil {
+            log.Fatalf("Unable to perform FDB transaction (%v)", e)
+        }
+
+        fmt.Printf("The original greeting was to: %s\n", string(ret.([]byte)))
+    }
 
 On Panics
 
